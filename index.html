@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype 3D Idleサイズ向き修正版</title>
+<title>立体機動装置 Prototype 3D 腰ワイヤー版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -607,7 +607,7 @@ function reset(){player.pos.set(0,80,0);player.vel.set(0,0,0);player.yaw=0;playe
 function bind(id,key){const el=document.getElementById(id),on=e=>{e.preventDefault();input[key]=true},off=e=>{e.preventDefault();input[key]=false};['pointerdown','touchstart','mousedown'].forEach(ev=>el.addEventListener(ev,on,{passive:false}));['pointerup','pointercancel','touchend','touchcancel','mouseup','mouseleave'].forEach(ev=>el.addEventListener(ev,off,{passive:false}))}['up','down','left','right','reel','release'].forEach(v=>bind(v,v));
 document.addEventListener('keydown',e=>{if(e.key==='ArrowUp')input.up=true;if(e.key==='ArrowDown')input.down=true;if(e.key==='ArrowLeft')input.left=true;if(e.key==='ArrowRight')input.right=true;if(e.key.toLowerCase()==='a')input.reel=true;if(e.key.toLowerCase()==='b')input.release=true});document.addEventListener('keyup',e=>{if(e.key==='ArrowUp')input.up=false;if(e.key==='ArrowDown')input.down=false;if(e.key==='ArrowLeft')input.left=false;if(e.key==='ArrowRight')input.right=false;if(e.key.toLowerCase()==='a')input.reel=false;if(e.key.toLowerCase()==='b')input.release=false});
 function forwardVector(){return new THREE.Vector3(Math.sin(player.yaw)*Math.cos(player.pitch),Math.sin(player.pitch),Math.cos(player.yaw)*Math.cos(player.pitch)).normalize()}
-function shootWire(side,sx,sy){const ndc=new THREE.Vector2((sx/innerWidth)*2-1,-(sy/innerHeight)*2+1);const raycaster=new THREE.Raycaster();raycaster.setFromCamera(ndc,camera);raycaster.far=3200;const objects=[];scene.traverse(o=>{if(o.isMesh&&o!==ground&&o.parent!==playerGroup)objects.push(o)});const hits=raycaster.intersectObjects(objects,true);let hit=hits.find(h=>h.distance>70);if(!hit){const gh=raycaster.intersectObject(ground);hit=gh.find(h=>h.distance>70)}if(!hit)return;const f=forwardVector(),toHit=hit.point.clone().sub(player.pos).normalize();if(f.dot(toHit)<.06)return;const w=player.wires[side];w.hooked=true;w.point.copy(hit.point);w.length=player.pos.distanceTo(hit.point)}
+function shootWire(side,sx,sy){const ndc=new THREE.Vector2((sx/innerWidth)*2-1,-(sy/innerHeight)*2+1);const raycaster=new THREE.Raycaster();raycaster.setFromCamera(ndc,camera);raycaster.far=3200;const objects=[];scene.traverse(o=>{if(o.isMesh&&o!==ground&&o.parent!==playerGroup)objects.push(o)});const hits=raycaster.intersectObjects(objects,true);let hit=hits.find(h=>h.distance>70);if(!hit){const gh=raycaster.intersectObject(ground);hit=gh.find(h=>h.distance>70)}if(!hit)return;const f=forwardVector(),toHit=hit.point.clone().sub(player.pos).normalize();if(f.dot(toHit)<.06)return;const w=player.wires[side];w.hooked=true;w.point.copy(hit.point);w.length=getWireOrigin(side).distanceTo(hit.point)}
 document.getElementById('tapLayer').addEventListener('pointerdown',e=>{if(e.target.id!=='tapLayer')return;e.preventDefault();shootWire(e.clientX<innerWidth/2?'left':'right',e.clientX,e.clientY)},{passive:false});
 function collide(){const radius=28;player.grounded=false;if(player.pos.y<60){player.pos.y=60;if(player.vel.y<0)player.vel.y=0;player.grounded=true}for(const b of solids){if(player.pos.y>b.h+80)continue;const insideX=player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius,insideZ=player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius;if(insideX&&insideZ&&player.pos.y<b.h+70){const left=Math.abs(player.pos.x-(b.x-radius)),right=Math.abs(player.pos.x-(b.x+b.w+radius)),front=Math.abs(player.pos.z-(b.z-radius)),back=Math.abs(player.pos.z-(b.z+b.d+radius)),min=Math.min(left,right,front,back);if(min===left){player.pos.x=b.x-radius;player.vel.x*=.25}else if(min===right){player.pos.x=b.x+b.w+radius;player.vel.x*=.25}else if(min===front){player.pos.z=b.z-radius;player.vel.z*=.25}else{player.pos.z=b.z+b.d+radius;player.vel.z*=.25}}if(player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius&&player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius&&player.pos.y<b.h+60&&player.pos.y>b.h-30&&player.vel.y<=0){player.pos.y=b.h+60;player.vel.y=0;player.grounded=true}}}
 function applyWire(w,dt){if(!w.hooked)return;const toPlayer=player.pos.clone().sub(w.point),dist=toPlayer.length();if(dist<1)return;const n=toPlayer.clone().normalize();if(input.reel){w.length=Math.max(90,w.length-(8+Math.min(22,dist*.018)))}else{w.length=Math.min(w.length+.5,dist+26)}if(dist>w.length){const excess=dist-w.length;player.pos.addScaledVector(n,-excess);const radial=player.vel.dot(n);if(radial>0)player.vel.addScaledVector(n,-radial);if(input.reel){player.vel.addScaledVector(n,-(14+Math.min(30,excess*.08))*dt*60)}}}
@@ -735,7 +735,56 @@ playerGroup.rotation.x=0.22;
   rig.lAnkle.rotation.x=avatarAnim.lAnkleX;
   rig.rAnkle.rotation.x=avatarAnim.rAnkleX;
 }
-function updateWireLines(){function setLine(line,w,offset){if(!w.hooked){line.visible=false;return}line.visible=true;line.geometry.dispose();line.geometry=new THREE.BufferGeometry().setFromPoints([player.pos.clone().add(offset),w.point])}setLine(leftLine,player.wires.left,new THREE.Vector3(-20,55,0));setLine(rightLine,player.wires.right,new THREE.Vector3(20,55,0))}
+
+function getWireOrigin(side){
+  // キャラの腰左右からワイヤーを出す
+  // side: "left" / "right"
+  const sideSign = side === "left" ? -1 : 1;
+
+  // キャラの向きに対する右方向ベクトル
+  const right = new THREE.Vector3(
+    Math.cos(player.yaw),
+    0,
+    -Math.sin(player.yaw)
+  ).normalize();
+
+  // 前方向ベクトル。腰から少し前に出して身体へのめり込みを避ける
+  const forward = new THREE.Vector3(
+    Math.sin(player.yaw),
+    0,
+    Math.cos(player.yaw)
+  ).normalize();
+
+  const origin = player.pos.clone();
+
+  // player.pos はゲーム内の胴体基準なので、腰位置へ少し下げる
+  origin.y -= 35;
+
+  // 左右腰位置
+  origin.addScaledVector(right, sideSign * 22);
+
+  // 少し前へ出す
+  origin.addScaledVector(forward, 8);
+
+  return origin;
+}
+
+function updateWireLines(){
+  function setLine(line,w,side){
+    if(!w.hooked){
+      line.visible=false;
+      return;
+    }
+    line.visible=true;
+
+    const start = getWireOrigin(side);
+    line.geometry.dispose();
+    line.geometry = new THREE.BufferGeometry().setFromPoints([start,w.point]);
+  }
+
+  setLine(leftLine,player.wires.left,"left");
+  setLine(rightLine,player.wires.right,"right");
+}
 function getRank(sec){if(sec<=18)return'S';if(sec<=30)return'A';if(sec<=45)return'B';if(sec<=60)return'C';return'D'}function updateUI(){const elapsed=clearTime??(performance.now()-startTime)/1000;timeText.textContent='T:'+elapsed.toFixed(2);heightText.textContent='H:'+Math.floor(player.pos.y);speedText.textContent='S:'+Math.floor(player.vel.length()*10);wireText.textContent='L:'+(player.wires.left.hooked?'ON':'OFF')+' / R:'+(player.wires.right.hooked?'ON':'OFF');stateText.textContent=(externalReady?'MODEL':'FALLBACK')+' / '+(player.grounded?'GROUND':'AIR')}
 function checkGoal(){if(cleared)return;const d=Math.hypot(player.pos.x-goalX,player.pos.z-goalZ);if(d<160&&player.pos.y<430){cleared=true;clearTime=(performance.now()-startTime)/1000;rankText.textContent='TIME '+clearTime.toFixed(2)+' / RANK '+getRank(clearTime);clearText.style.display='block'}}
 function animate(){const dt=Math.min(.033,clock.getDelta());if(input.release){player.wires.left.hooked=false;player.wires.right.hooked=false}player.vel.y-=14*dt;applyWire(player.wires.left,dt);applyWire(player.wires.right,dt);player.pos.addScaledVector(player.vel,dt*60);collide();player.vel.multiplyScalar(.993);player.vel.y*=.998;updateCamera(dt);updateAvatar();updateExternalCharacter(dt);updateWireLines();checkGoal();updateUI();renderer.render(scene,camera);requestAnimationFrame(animate)}
