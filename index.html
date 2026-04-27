@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype 3D版</title>
+<title>立体機動装置 Prototype 3D GLBモデル統合版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -15,10 +15,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 <canvas id="game"></canvas><div id="tapLayer"></div>
 <div class="mode"><button id="modeBtn">MANUAL</button></div><div class="system"><button id="resetBtn">リセット</button><button id="respawnBtn">リスポーン</button></div>
 <div class="hud"><div id="timeText">T:0.00</div><div id="heightText">H:0</div><div id="speedText">S:0</div><div id="wireText">L:OFF / R:OFF</div><div id="stateText">GROUND</div></div>
-<div class="crosshair"></div><div class="notice">左半分タップ=左ワイヤー / 右半分タップ=右ワイヤー</div><div id="clearText" class="clear">CLEAR!!<br><span id="rankText" style="font-size:28px"></span></div>
+<div class="crosshair"></div><div class="notice">GLB版：peoplemodel.glbを同じ階層に配置</div><div id="clearText" class="clear">CLEAR!!<br><span id="rankText" style="font-size:28px"></span></div>
 <div class="ui"><div class="dpad"><div></div><button class="btn" id="up">↑</button><div></div><button class="btn" id="left">←</button><div></div><button class="btn" id="right">→</button><div></div><button class="btn" id="down">↓</button><div></div></div><div class="actionArea"><button class="btn action" id="reel">A</button><button class="btn action" id="release">B</button></div></div>
 <script type="module">
 import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
+import { GLTFLoader } from "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 const canvas=document.getElementById('game');const renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x8ed0ff);scene.fog=new THREE.Fog(0xbfe6ff,1200,4800);const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,9000);const clock=new THREE.Clock();
 scene.add(new THREE.HemisphereLight(0xffffff,0x6b7a55,1.2));const sun=new THREE.DirectionalLight(0xffffff,1.6);sun.position.set(900,1600,700);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.near=50;sun.shadow.camera.far=5000;sun.shadow.camera.left=-2200;sun.shadow.camera.right=2200;sun.shadow.camera.top=2200;sun.shadow.camera.bottom=-2200;scene.add(sun);
@@ -30,36 +31,236 @@ for(let gx=-5;gx<=5;gx++){for(let gz=-5;gz<=5;gz++){if(gx===0&&gz===0)continue;i
 const wallMat=new THREE.MeshStandardMaterial({color:0xbdb7ad,roughness:.9});const wallRadius=4700;for(let i=0;i<96;i++){const a=i/96*Math.PI*2,x=Math.sin(a)*wallRadius,z=Math.cos(a)*wallRadius;const wall=new THREE.Mesh(new THREE.BoxGeometry(230,820,120),wallMat);wall.position.set(x,410,z);wall.rotation.y=a;wall.castShadow=wall.receiveShadow=true;scene.add(wall);solids.push({x:x-115,z:z-60,w:230,d:120,h:820})}
 const goalX=3100,goalZ=3250;const goal=new THREE.Group(),gateMat=new THREE.MeshStandardMaterial({color:0x35ff4a,emissive:0x0a4a0a,roughness:.4});const p1=new THREE.Mesh(new THREE.BoxGeometry(35,360,35),gateMat);p1.position.set(-100,180,0);const p2=p1.clone();p2.position.x=100;const top=new THREE.Mesh(new THREE.BoxGeometry(235,35,35),gateMat);top.position.set(0,360,0);goal.add(p1,p2,top);goal.position.set(goalX,0,goalZ);scene.add(goal);
 const playerGroup=new THREE.Group();scene.add(playerGroup);
-const skinMat=new THREE.MeshStandardMaterial({color:0xd1b094,roughness:.75});
-const suitMat=new THREE.MeshStandardMaterial({color:0x242a31,roughness:.9});
-const jacketMat=new THREE.MeshStandardMaterial({color:0x3b4652,roughness:.88});
-const pantsMat=new THREE.MeshStandardMaterial({color:0x33445a,roughness:.88});
+
+// Humanoid v3:
+// - レスリングの構えを参考にした前傾姿勢
+// - 高腰
+// - 八頭身寄り
+// - 脚長は全身の約45%
+// - 肩位置は頭頂から約15%付近で、やや高め
+const skinMat=new THREE.MeshStandardMaterial({color:0xd1ad90,roughness:.78});
+const hairMat=new THREE.MeshStandardMaterial({color:0x17120f,roughness:.9});
+const jacketMat=new THREE.MeshStandardMaterial({color:0x303943,roughness:.86});
+const shirtMat=new THREE.MeshStandardMaterial({color:0xd6d7d2,roughness:.9});
+const pantsMat=new THREE.MeshStandardMaterial({color:0x33455d,roughness:.88});
 const bootMat=new THREE.MeshStandardMaterial({color:0x1d1d1f,roughness:.9});
-const gearMat=new THREE.MeshStandardMaterial({color:0x4e4a43,roughness:.78,metalness:.12});
+const gearMat=new THREE.MeshStandardMaterial({color:0x4c4942,roughness:.78,metalness:.12});
 const cableMat=new THREE.MeshStandardMaterial({color:0x151515,roughness:.7});
-function makeCapsule(radius,length,mat){const mesh=new THREE.Mesh(new THREE.CapsuleGeometry(radius,length,8,12),mat);mesh.castShadow=true;mesh.receiveShadow=true;return mesh}
-function makeBox(w,h,d,mat){const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);mesh.castShadow=true;mesh.receiveShadow=true;return mesh}
-function makeSphere(r,mat){const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,18,14),mat);mesh.castShadow=true;mesh.receiveShadow=true;return mesh}
-const rig={root:playerGroup,chest:new THREE.Group(),pelvis:new THREE.Group(),head:new THREE.Group(),lShoulder:new THREE.Group(),rShoulder:new THREE.Group(),lElbow:new THREE.Group(),rElbow:new THREE.Group(),lHip:new THREE.Group(),rHip:new THREE.Group(),lKnee:new THREE.Group(),rKnee:new THREE.Group()};
-playerGroup.add(rig.pelvis);rig.pelvis.add(rig.chest,rig.lHip,rig.rHip);rig.chest.add(rig.head,rig.lShoulder,rig.rShoulder);
+
+function makeCapsule(radius,length,mat){
+  const mesh=new THREE.Mesh(new THREE.CapsuleGeometry(radius,length,8,14),mat);
+  mesh.castShadow=true;mesh.receiveShadow=true;return mesh;
+}
+function makeBox(w,h,d,mat){
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  mesh.castShadow=true;mesh.receiveShadow=true;return mesh;
+}
+function makeSphere(r,mat){
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,18,14),mat);
+  mesh.castShadow=true;mesh.receiveShadow=true;return mesh;
+}
+
+// 全身基準:
+// 足裏 -78 / 頭頂 約118 → 身長約196
+// 脚: 股関節 -3 から足裏 -78 = 約75、さらに骨盤周辺込みで約88〜90 → 約45%
+const rig={
+  root:playerGroup,
+  pelvis:new THREE.Group(),
+  spine:new THREE.Group(),
+  chest:new THREE.Group(),
+  neck:new THREE.Group(),
+  head:new THREE.Group(),
+  lShoulder:new THREE.Group(),rShoulder:new THREE.Group(),
+  lElbow:new THREE.Group(),rElbow:new THREE.Group(),
+  lWrist:new THREE.Group(),rWrist:new THREE.Group(),
+  lHip:new THREE.Group(),rHip:new THREE.Group(),
+  lKnee:new THREE.Group(),rKnee:new THREE.Group(),
+  lAnkle:new THREE.Group(),rAnkle:new THREE.Group()
+};
+
+playerGroup.add(rig.pelvis);
+rig.pelvis.add(rig.spine,rig.lHip,rig.rHip);
+rig.spine.add(rig.chest);
+rig.chest.add(rig.neck,rig.lShoulder,rig.rShoulder);
+rig.neck.add(rig.head);
+
 const parts={};
-parts.chest=makeBox(42,62,26,jacketMat);parts.chest.position.y=46;rig.chest.add(parts.chest);
-parts.abdomen=makeBox(34,34,22,suitMat);parts.abdomen.position.y=8;rig.chest.add(parts.abdomen);
-parts.pelvis=makeBox(42,22,24,gearMat);parts.pelvis.position.y=0;rig.pelvis.add(parts.pelvis);
-parts.neck=makeCapsule(6,10,skinMat);parts.neck.position.y=72;rig.chest.add(parts.neck);
-parts.head=makeSphere(18,skinMat);parts.head.position.y=92;rig.head.add(parts.head);
-parts.hair=makeSphere(19,new THREE.MeshStandardMaterial({color:0x16120f,roughness:.85}));parts.hair.scale.set(1.02,.62,1.02);parts.hair.position.y=101;rig.head.add(parts.hair);
-parts.lUpperArm=makeCapsule(6,28,jacketMat);parts.rUpperArm=makeCapsule(6,28,jacketMat);parts.lLowerArm=makeCapsule(5,28,suitMat);parts.rLowerArm=makeCapsule(5,28,suitMat);parts.lHand=makeSphere(6,skinMat);parts.rHand=makeSphere(6,skinMat);
-parts.lThigh=makeCapsule(8,34,pantsMat);parts.rThigh=makeCapsule(8,34,pantsMat);parts.lShin=makeCapsule(7,36,pantsMat);parts.rShin=makeCapsule(7,36,pantsMat);parts.lBoot=makeBox(12,8,24,bootMat);parts.rBoot=makeBox(12,8,24,bootMat);
-rig.lShoulder.position.set(-28,62,0);rig.rShoulder.position.set(28,62,0);rig.lShoulder.add(parts.lUpperArm,rig.lElbow);rig.rShoulder.add(parts.rUpperArm,rig.rElbow);parts.lUpperArm.position.y=-16;parts.rUpperArm.position.y=-16;rig.lElbow.position.y=-34;rig.rElbow.position.y=-34;rig.lElbow.add(parts.lLowerArm,parts.lHand);rig.rElbow.add(parts.rLowerArm,parts.rHand);parts.lLowerArm.position.y=-16;parts.rLowerArm.position.y=-16;parts.lHand.position.y=-34;parts.rHand.position.y=-34;
-rig.lHip.position.set(-16,-10,0);rig.rHip.position.set(16,-10,0);rig.lHip.add(parts.lThigh,rig.lKnee);rig.rHip.add(parts.rThigh,rig.rKnee);parts.lThigh.position.y=-20;parts.rThigh.position.y=-20;rig.lKnee.position.y=-42;rig.rKnee.position.y=-42;rig.lKnee.add(parts.lShin,parts.lBoot);rig.rKnee.add(parts.rShin,parts.rBoot);parts.lShin.position.y=-20;parts.rShin.position.y=-20;parts.lBoot.position.set(0,-44,8);parts.rBoot.position.set(0,-44,8);
-parts.lGear=makeBox(18,16,26,gearMat);parts.rGear=makeBox(18,16,26,gearMat);parts.lGear.position.set(-32,4,0);parts.rGear.position.set(32,4,0);rig.pelvis.add(parts.lGear,parts.rGear);
-parts.backUnit=makeBox(36,32,14,gearMat);parts.backUnit.position.set(0,34,-19);rig.chest.add(parts.backUnit);
-parts.lBlade=makeBox(5,44,5,cableMat);parts.rBlade=makeBox(5,44,5,cableMat);parts.lBlade.position.set(-42,4,16);parts.rBlade.position.set(42,4,16);parts.lBlade.rotation.z=.18;parts.rBlade.rotation.z=-.18;rig.pelvis.add(parts.lBlade,parts.rBlade);
+
+// 高腰: 骨盤を高め、胴はやや短く締める
+parts.pelvis=makeBox(38,18,24,gearMat);parts.pelvis.position.set(0,0,0);rig.pelvis.add(parts.pelvis);
+parts.abdomen=makeBox(31,30,22,shirtMat);parts.abdomen.position.set(0,23,0);rig.spine.add(parts.abdomen);
+parts.chest=makeBox(49,44,27,jacketMat);parts.chest.position.set(0,55,0);rig.chest.add(parts.chest);
+
+// 肩位置: 頭頂から約15%付近を意識して高め
+rig.lShoulder.position.set(-31,82,0);
+rig.rShoulder.position.set(31,82,0);
+
+parts.neck=makeCapsule(5,9,skinMat);parts.neck.position.set(0,88,0);rig.neck.add(parts.neck);
+parts.head=makeSphere(17,skinMat);parts.head.scale.set(.88,1.08,.92);parts.head.position.set(0,107,0);rig.head.add(parts.head);
+
+parts.hairCap=makeSphere(18.6,hairMat);
+parts.hairCap.scale.set(1.04,.72,1.05);
+parts.hairCap.position.set(0,112,0);
+rig.head.add(parts.hairCap);
+
+// 頭皮隠し用: 前後左右に髪の面を足して、球の潰しで禿げて見えるのを防ぐ
+parts.frontHair=makeBox(30,14,10,hairMat);
+parts.frontHair.position.set(0,106,12);
+parts.frontHair.rotation.x=-.15;
+rig.head.add(parts.frontHair);
+
+parts.sideHairL=makeBox(8,18,10,hairMat);
+parts.sideHairL.position.set(-15,104,3);
+parts.sideHairL.rotation.z=.18;
+rig.head.add(parts.sideHairL);
+
+parts.sideHairR=makeBox(8,18,10,hairMat);
+parts.sideHairR.position.set(15,104,3);
+parts.sideHairR.rotation.z=-.18;
+rig.head.add(parts.sideHairR);
+
+parts.backHair=makeBox(30,18,10,hairMat);
+parts.backHair.position.set(0,104,-13);
+parts.backHair.rotation.x=.10;
+rig.head.add(parts.backHair);
+
+
+
+// hips high and compact
+rig.spine.position.set(0,0,0);
+rig.chest.position.set(0,0,0);
+rig.neck.position.set(0,0,0);
+rig.lHip.position.set(-15,-4,0);
+rig.rHip.position.set(15,-4,0);
+
+// arms: 肘が自然に曲がるレスリング構え用に少し長め
+parts.lUpperArm=makeCapsule(5.3,34,jacketMat);parts.rUpperArm=makeCapsule(5.3,34,jacketMat);
+parts.lLowerArm=makeCapsule(4.7,32,shirtMat);parts.rLowerArm=makeCapsule(4.7,32,shirtMat);
+parts.lHand=makeSphere(5.8,skinMat);parts.rHand=makeSphere(5.8,skinMat);
+
+rig.lShoulder.add(parts.lUpperArm,rig.lElbow);
+rig.rShoulder.add(parts.rUpperArm,rig.rElbow);
+parts.lUpperArm.position.set(0,-18,0);
+parts.rUpperArm.position.set(0,-18,0);
+rig.lElbow.position.set(0,-40,0);
+rig.rElbow.position.set(0,-40,0);
+rig.lElbow.add(parts.lLowerArm,rig.lWrist);
+rig.rElbow.add(parts.rLowerArm,rig.rWrist);
+parts.lLowerArm.position.set(0,-17,0);
+parts.rLowerArm.position.set(0,-17,0);
+rig.lWrist.position.set(0,-37,0);
+rig.rWrist.position.set(0,-37,0);
+rig.lWrist.add(parts.lHand);
+rig.rWrist.add(parts.rHand);
+
+// legs: 全身比で約45%。太もも/すねをやや長め、高腰を維持
+parts.lThigh=makeCapsule(7.2,42,pantsMat);parts.rThigh=makeCapsule(7.2,42,pantsMat);
+parts.lShin=makeCapsule(6.3,42,pantsMat);parts.rShin=makeCapsule(6.3,42,pantsMat);
+parts.lBoot=makeBox(13,8,28,bootMat);parts.rBoot=makeBox(13,8,28,bootMat);
+
+rig.lHip.add(parts.lThigh,rig.lKnee);
+rig.rHip.add(parts.rThigh,rig.rKnee);
+parts.lThigh.position.set(0,-23,0);
+parts.rThigh.position.set(0,-23,0);
+rig.lKnee.position.set(0,-48,0);
+rig.rKnee.position.set(0,-48,0);
+rig.lKnee.add(parts.lShin,rig.lAnkle);
+rig.rKnee.add(parts.rShin,rig.rAnkle);
+parts.lShin.position.set(0,-23,0);
+parts.rShin.position.set(0,-23,0);
+rig.lAnkle.position.set(0,-48,0);
+rig.rAnkle.position.set(0,-48,0);
+rig.lAnkle.add(parts.lBoot);
+rig.rAnkle.add(parts.rBoot);
+parts.lBoot.position.set(0,-2,8);
+parts.rBoot.position.set(0,-2,8);
+
+// gear
+parts.lGear=makeBox(16,14,22,gearMat);parts.rGear=makeBox(16,14,22,gearMat);
+parts.lGear.position.set(-30,4,0);parts.rGear.position.set(30,4,0);rig.pelvis.add(parts.lGear,parts.rGear);
+parts.backUnit=makeBox(30,26,12,gearMat);parts.backUnit.position.set(0,49,-18);rig.chest.add(parts.backUnit);
+parts.lBlade=makeBox(4,38,4,cableMat);parts.rBlade=makeBox(4,38,4,cableMat);
+parts.lBlade.position.set(-39,1,15);parts.rBlade.position.set(39,1,15);
+parts.lBlade.rotation.z=.18;parts.rBlade.rotation.z=-.18;rig.pelvis.add(parts.lBlade,parts.rBlade);
+
 const limbs=parts,torso=parts.chest;
-const avatarAnim={chestX:0,chestZ:0,pelvisZ:0,lArmX:.25,rArmX:.25,lArmZ:.5,rArmZ:-.5,lElbowX:.15,rElbowX:.15,lLegX:.08,rLegX:.08,lLegZ:.18,rLegZ:-.18,lKneeX:.12,rKneeX:.12,headX:0};
-function lerpAvatar(a,b,t){return a+(b-a)*t}function smoothAvatar(target,rate=.16){for(const k in target){avatarAnim[k]=lerpAvatar(avatarAnim[k]??0,target[k],rate)}}
-const leftLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x222222})),rightLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x111111}));scene.add(leftLine,rightLine);
+
+// Default is no longer upright.
+// レスリング構え: 股関節から前傾、胸は丸めすぎず、膝は軽く曲げ、腕は前方で構える
+const avatarAnim={
+  spineX:.18,chestX:.24,chestZ:0,pelvisZ:0,headX:-.10,
+  lArmX:.70,rArmX:.70,lArmZ:-.32,rArmZ:.32,
+  lElbowX:-.28,rElbowX:-.28,lWristX:.06,rWristX:.06,
+  lLegX:-.18,rLegX:-.18,lLegZ:.12,rLegZ:-.12,
+  lKneeX:.46,rKneeX:.46,lAnkleX:-.10,rAnkleX:-.10
+};
+function lerpAvatar(a,b,t){return a+(b-a)*t}
+function smoothAvatar(target,rate=.16){for(const k in target){avatarAnim[k]=lerpAvatar(avatarAnim[k]??0,target[k],rate)}}
+
+const leftLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x222222}));
+const rightLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x111111}));
+scene.add(leftLine,rightLine);
+
+// ---- External GLB character ----
+// index.html と同じ階層に peoplemodel.glb を置く。
+let externalCharacter = null;
+let externalMixer = null;
+let externalReady = false;
+let externalLoadFailed = false;
+
+playerGroup.visible = true;
+
+const gltfLoader = new GLTFLoader();
+gltfLoader.load(
+  "peoplemodel.glb",
+  (gltf) => {
+    externalCharacter = gltf.scene;
+
+    externalCharacter.traverse((obj) => {
+      if(obj.isMesh){
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+      }
+    });
+
+    // サイズがおかしい場合はここを調整
+    externalCharacter.scale.set(1.05, 1.05, 1.05);
+
+    scene.add(externalCharacter);
+
+    if(gltf.animations && gltf.animations.length > 0){
+      externalMixer = new THREE.AnimationMixer(externalCharacter);
+      const action = externalMixer.clipAction(gltf.animations[0]);
+      action.play();
+    }
+
+    externalReady = true;
+    playerGroup.visible = false;
+  },
+  undefined,
+  (err) => {
+    console.warn("peoplemodel.glb load failed:", err);
+    externalLoadFailed = true;
+    playerGroup.visible = true;
+  }
+);
+
+function updateExternalCharacter(dt){
+  if(!externalCharacter) return;
+
+  externalCharacter.position.copy(player.pos);
+
+  // 足元位置補正。埋まる/浮く場合はここを調整
+  externalCharacter.position.y -= 58;
+
+  // 向き補正。逆向きなら + Math.PI を消す
+  externalCharacter.rotation.y = player.yaw + Math.PI;
+
+  if(externalMixer){
+    externalMixer.update(dt);
+  }
+}
+
 const input={up:false,down:false,left:false,right:false,reel:false,release:false};let autoMode=false;const player={pos:new THREE.Vector3(0,60,0),vel:new THREE.Vector3(0,0,0),yaw:0,pitch:0,grounded:false,wires:{left:{hooked:false,point:new THREE.Vector3(),length:0},right:{hooked:false,point:new THREE.Vector3(),length:0}}};let startTime=performance.now(),clearTime=null,cleared=false;
 function reset(){player.pos.set(0,80,0);player.vel.set(0,0,0);player.yaw=0;player.pitch=0;player.wires.left.hooked=false;player.wires.right.hooked=false;startTime=performance.now();clearTime=null;cleared=false;document.getElementById('clearText').style.display='none'}function respawn(){player.pos.set(0,360,0);player.vel.set(0,0,0);player.wires.left.hooked=false;player.wires.right.hooked=false}document.getElementById('resetBtn').onclick=reset;document.getElementById('respawnBtn').onclick=respawn;document.getElementById('modeBtn').onclick=()=>{autoMode=!autoMode;document.body.classList.toggle('auto',autoMode);document.getElementById('modeBtn').textContent=autoMode?'AUTO':'MANUAL'};
 function bind(id,key){const el=document.getElementById(id),on=e=>{e.preventDefault();input[key]=true},off=e=>{e.preventDefault();input[key]=false};['pointerdown','touchstart','mousedown'].forEach(ev=>el.addEventListener(ev,on,{passive:false}));['pointerup','pointercancel','touchend','touchcancel','mouseup','mouseleave'].forEach(ev=>el.addEventListener(ev,off,{passive:false}))}['up','down','left','right','reel','release'].forEach(v=>bind(v,v));
@@ -69,31 +270,134 @@ function shootWire(side,sx,sy){const ndc=new THREE.Vector2((sx/innerWidth)*2-1,-
 document.getElementById('tapLayer').addEventListener('pointerdown',e=>{if(e.target.id!=='tapLayer')return;e.preventDefault();shootWire(e.clientX<innerWidth/2?'left':'right',e.clientX,e.clientY)},{passive:false});
 function collide(){const radius=28;player.grounded=false;if(player.pos.y<60){player.pos.y=60;if(player.vel.y<0)player.vel.y=0;player.grounded=true}for(const b of solids){if(player.pos.y>b.h+80)continue;const insideX=player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius,insideZ=player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius;if(insideX&&insideZ&&player.pos.y<b.h+70){const left=Math.abs(player.pos.x-(b.x-radius)),right=Math.abs(player.pos.x-(b.x+b.w+radius)),front=Math.abs(player.pos.z-(b.z-radius)),back=Math.abs(player.pos.z-(b.z+b.d+radius)),min=Math.min(left,right,front,back);if(min===left){player.pos.x=b.x-radius;player.vel.x*=.25}else if(min===right){player.pos.x=b.x+b.w+radius;player.vel.x*=.25}else if(min===front){player.pos.z=b.z-radius;player.vel.z*=.25}else{player.pos.z=b.z+b.d+radius;player.vel.z*=.25}}if(player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius&&player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius&&player.pos.y<b.h+60&&player.pos.y>b.h-30&&player.vel.y<=0){player.pos.y=b.h+60;player.vel.y=0;player.grounded=true}}}
 function applyWire(w,dt){if(!w.hooked)return;const toPlayer=player.pos.clone().sub(w.point),dist=toPlayer.length();if(dist<1)return;const n=toPlayer.clone().normalize();if(input.reel){w.length=Math.max(90,w.length-(8+Math.min(22,dist*.018)))}else{w.length=Math.min(w.length+.5,dist+26)}if(dist>w.length){const excess=dist-w.length;player.pos.addScaledVector(n,-excess);const radial=player.vel.dot(n);if(radial>0)player.vel.addScaledVector(n,-radial);if(input.reel){player.vel.addScaledVector(n,-(14+Math.min(30,excess*.08))*dt*60)}}}
-function updateCamera(dt){if(autoMode){const dx=goalX-player.pos.x,dz=goalZ-player.pos.z,targetYaw=Math.atan2(dx,dz);let diff=targetYaw-player.yaw;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;player.yaw+=diff*.05;const dist=Math.hypot(dx,dz),targetPitch=THREE.MathUtils.clamp(Math.atan2(160-player.pos.y,dist)+.05,-.55,.55);player.pitch+=(targetPitch-player.pitch)*.04}else{if(input.left)player.yaw-=1.8*dt;if(input.right)player.yaw+=1.8*dt;if(input.up)player.pitch+=1.2*dt;if(input.down)player.pitch-=1.2*dt;player.pitch=THREE.MathUtils.clamp(player.pitch,-1.2,1.2)}const f=forwardVector(),target=player.pos.clone().add(new THREE.Vector3(0,40,0)),camPos=target.clone().addScaledVector(f,-230).add(new THREE.Vector3(0,80,0));camera.position.lerp(camPos,.22);camera.lookAt(target.clone().addScaledVector(f,180))}
+function updateCamera(dt){if(autoMode){const dx=goalX-player.pos.x,dz=goalZ-player.pos.z,targetYaw=Math.atan2(dx,dz);let diff=targetYaw-player.yaw;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;player.yaw+=diff*.05;const dist=Math.hypot(dx,dz),targetPitch=THREE.MathUtils.clamp(Math.atan2(160-player.pos.y,dist)+.05,-.55,.55);player.pitch+=(targetPitch-player.pitch)*.04}else{if(input.left)player.yaw+=1.8*dt;if(input.right)player.yaw-=1.8*dt;if(input.up)player.pitch+=1.2*dt;if(input.down)player.pitch-=1.2*dt;player.pitch=THREE.MathUtils.clamp(player.pitch,-1.2,1.2)}const f=forwardVector(),target=player.pos.clone().add(new THREE.Vector3(0,40,0)),camPos=target.clone().addScaledVector(f,-230).add(new THREE.Vector3(0,80,0));camera.position.lerp(camPos,.22);camera.lookAt(target.clone().addScaledVector(f,180))}
 function updateAvatar(){
   playerGroup.position.copy(player.pos);
   playerGroup.rotation.y=player.yaw+Math.PI;
+// レスリング構えの前傾を全身で表現するため、骨盤起点でキャラ全体を前に倒す
+playerGroup.rotation.x=0.22;
+
   const hasWire=player.wires.left.hooked||player.wires.right.hooked;
   const reeling=input.reel&&hasWire;
   const falling=!player.grounded&&player.vel.y<-1.0;
   const rising=!player.grounded&&player.vel.y>1.0;
   const speed=player.vel.length();
   const time=performance.now()*0.006;
-  const target={chestX:0,chestZ:0,pelvisZ:0,lArmX:.25,rArmX:.25,lArmZ:.5,rArmZ:-.5,lElbowX:.15,rElbowX:.15,lLegX:.08,rLegX:.08,lLegZ:.18,rLegZ:-.18,lKneeX:.12,rKneeX:.12,headX:0};
-  if(player.grounded){target.chestZ=Math.sin(time)*.025;target.lArmX+=Math.sin(time)*.06;target.rArmX-=Math.sin(time)*.06;target.lLegX+=Math.sin(time+.5)*.025;target.rLegX-=Math.sin(time+.5)*.025}
-  if(reeling){target.chestX=.38;target.headX=-.08;target.lArmX=1.38;target.rArmX=1.38;target.lArmZ=.72;target.rArmZ=-.72;target.lElbowX=-1.05;target.rElbowX=-1.05;target.lLegX=-.58;target.rLegX=-.36;target.lLegZ=.26;target.rLegZ=-.26;target.lKneeX=.9;target.rKneeX=.75}
-  else if(falling){target.chestX=-.12;target.headX=.04;target.lArmX=.72;target.rArmX=.72;target.lArmZ=1.0;target.rArmZ=-1.0;target.lElbowX=-.22;target.rElbowX=-.22;target.lLegX=-.18;target.rLegX=-.28;target.lLegZ=.32;target.rLegZ=-.32;target.lKneeX=.42;target.rKneeX=.36}
-  else if(rising){target.chestX=-.20;target.headX=-.02;target.lArmX=1.15;target.rArmX=1.15;target.lArmZ=.42;target.rArmZ=-.42;target.lElbowX=-.42;target.rElbowX=-.42;target.lLegX=-.42;target.rLegX=-.30;target.lKneeX=.55;target.rKneeX=.42}
-  else if(speed>12&&!player.grounded){target.chestX=.12;target.lArmX=.45;target.rArmX=.45;target.lArmZ=.85;target.rArmZ=-.85;target.lLegX=-.15;target.rLegX=-.18;target.lKneeX=.28;target.rKneeX=.22}
-  smoothAvatar(target,reeling?.22:.16);
-  rig.chest.rotation.x=avatarAnim.chestX;rig.chest.rotation.z=avatarAnim.chestZ;rig.pelvis.rotation.z=avatarAnim.pelvisZ;rig.head.rotation.x=avatarAnim.headX;
-  rig.lShoulder.rotation.set(avatarAnim.lArmX,0,avatarAnim.lArmZ);rig.rShoulder.rotation.set(avatarAnim.rArmX,0,avatarAnim.rArmZ);rig.lElbow.rotation.x=avatarAnim.lElbowX;rig.rElbow.rotation.x=avatarAnim.rElbowX;
-  rig.lHip.rotation.set(avatarAnim.lLegX,0,avatarAnim.lLegZ);rig.rHip.rotation.set(avatarAnim.rLegX,0,avatarAnim.rLegZ);rig.lKnee.rotation.x=avatarAnim.lKneeX;rig.rKnee.rotation.x=avatarAnim.rKneeX
+
+  // Base: wrestling stance.
+  // 高腰、股関節から前傾、膝は深く落としすぎない。
+  const target={
+    spineX:.18,chestX:.24,chestZ:0,pelvisZ:0,headX:-.10,
+    lArmX:.70,rArmX:.70,lArmZ:-.32,rArmZ:.32,
+    lElbowX:-.28,rElbowX:-.28,lWristX:.06,rWristX:.06,
+    lLegX:-.18,rLegX:-.18,lLegZ:.12,rLegZ:-.12,
+    lKneeX:.46,rKneeX:.46,lAnkleX:-.10,rAnkleX:-.10
+  };
+
+  if(player.grounded){
+    // 構え中の小さな重心移動
+    target.chestZ=Math.sin(time)*.018;
+    target.pelvisZ=-Math.sin(time)*.010;
+    target.lArmX+=Math.sin(time)*.035;
+    target.rArmX-=Math.sin(time)*.035;
+  }
+
+  if(reeling){
+    // 巻き取り: レスリング構えからさらに前傾。
+    // 肘は体側へ引き、肩は前方、腰は高く残す。
+    target.spineX=.28;
+    target.chestX=.38;
+    target.headX=-.14;
+    target.lArmX=1.05;
+    target.rArmX=1.05;
+    target.lArmZ=-.34;
+    target.rArmZ=.34;
+    target.lElbowX=-.52;
+    target.rElbowX=-.52;
+    target.lWristX=.10;
+    target.rWristX=.10;
+    target.lLegX=-.22;
+    target.rLegX=-.18;
+    target.lLegZ=.16;
+    target.rLegZ=-.16;
+    target.lKneeX=.54;
+    target.rKneeX=.50;
+    target.lAnkleX=-.14;
+    target.rAnkleX=-.14;
+  }else if(falling){
+    // 落下: 前傾は残しつつ、腕でバランスを取る。
+    target.spineX=.10;
+    target.chestX=.16;
+    target.headX=-.06;
+    target.lArmX=.56;
+    target.rArmX=.56;
+    target.lArmZ=-.68;
+    target.rArmZ=.68;
+    target.lElbowX=-.08;
+    target.rElbowX=-.08;
+    target.lLegX=-.24;
+    target.rLegX=-.26;
+    target.lLegZ=.24;
+    target.rLegZ=-.24;
+    target.lKneeX=.42;
+    target.rKneeX=.38;
+  }else if(rising){
+    // 上昇: 構えから脚をやや伸ばす。肩は高めを維持。
+    target.spineX=.08;
+    target.chestX=.12;
+    target.headX=-.04;
+    target.lArmX=.82;
+    target.rArmX=.82;
+    target.lArmZ=-.30;
+    target.rArmZ=.30;
+    target.lElbowX=-.06;
+    target.rElbowX=-.06;
+    target.lLegX=-.32;
+    target.rLegX=-.24;
+    target.lKneeX=.34;
+    target.rKneeX=.30;
+  }else if(speed>12&&!player.grounded){
+    // 高速滑空: レスリング前傾を空中姿勢に変換。
+    target.spineX=.18;
+    target.chestX=.26;
+    target.lArmX=.44;
+    target.rArmX=.44;
+    target.lArmZ=-.55;
+    target.rArmZ=.55;
+    target.lElbowX=-.06;
+    target.rElbowX=-.06;
+    target.lLegX=-.18;
+    target.rLegX=-.20;
+    target.lKneeX=.28;
+    target.rKneeX=.26;
+  }
+
+  smoothAvatar(target,reeling?.22:.15);
+
+  rig.spine.rotation.x=avatarAnim.spineX;
+  rig.chest.rotation.x=avatarAnim.chestX;
+  rig.chest.rotation.z=avatarAnim.chestZ;
+  rig.pelvis.rotation.z=avatarAnim.pelvisZ;
+  rig.head.rotation.x=avatarAnim.headX;
+
+  rig.lShoulder.rotation.set(avatarAnim.lArmX,0,avatarAnim.lArmZ);
+  rig.rShoulder.rotation.set(avatarAnim.rArmX,0,avatarAnim.rArmZ);
+  rig.lElbow.rotation.x=avatarAnim.lElbowX;
+  rig.rElbow.rotation.x=avatarAnim.rElbowX;
+  rig.lWrist.rotation.x=avatarAnim.lWristX;
+  rig.rWrist.rotation.x=avatarAnim.rWristX;
+
+  rig.lHip.rotation.set(avatarAnim.lLegX,0,avatarAnim.lLegZ);
+  rig.rHip.rotation.set(avatarAnim.rLegX,0,avatarAnim.rLegZ);
+  rig.lKnee.rotation.x=avatarAnim.lKneeX;
+  rig.rKnee.rotation.x=avatarAnim.rKneeX;
+  rig.lAnkle.rotation.x=avatarAnim.lAnkleX;
+  rig.rAnkle.rotation.x=avatarAnim.rAnkleX;
 }
 function updateWireLines(){function setLine(line,w,offset){if(!w.hooked){line.visible=false;return}line.visible=true;line.geometry.dispose();line.geometry=new THREE.BufferGeometry().setFromPoints([player.pos.clone().add(offset),w.point])}setLine(leftLine,player.wires.left,new THREE.Vector3(-20,55,0));setLine(rightLine,player.wires.right,new THREE.Vector3(20,55,0))}
-function getRank(sec){if(sec<=18)return'S';if(sec<=30)return'A';if(sec<=45)return'B';if(sec<=60)return'C';return'D'}function updateUI(){const elapsed=clearTime??(performance.now()-startTime)/1000;timeText.textContent='T:'+elapsed.toFixed(2);heightText.textContent='H:'+Math.floor(player.pos.y);speedText.textContent='S:'+Math.floor(player.vel.length()*10);wireText.textContent='L:'+(player.wires.left.hooked?'ON':'OFF')+' / R:'+(player.wires.right.hooked?'ON':'OFF');stateText.textContent=player.grounded?'GROUND':'AIR'}
+function getRank(sec){if(sec<=18)return'S';if(sec<=30)return'A';if(sec<=45)return'B';if(sec<=60)return'C';return'D'}function updateUI(){const elapsed=clearTime??(performance.now()-startTime)/1000;timeText.textContent='T:'+elapsed.toFixed(2);heightText.textContent='H:'+Math.floor(player.pos.y);speedText.textContent='S:'+Math.floor(player.vel.length()*10);wireText.textContent='L:'+(player.wires.left.hooked?'ON':'OFF')+' / R:'+(player.wires.right.hooked?'ON':'OFF');stateText.textContent=(externalReady?'MODEL':'FALLBACK')+' / '+(player.grounded?'GROUND':'AIR')}
 function checkGoal(){if(cleared)return;const d=Math.hypot(player.pos.x-goalX,player.pos.z-goalZ);if(d<160&&player.pos.y<430){cleared=true;clearTime=(performance.now()-startTime)/1000;rankText.textContent='TIME '+clearTime.toFixed(2)+' / RANK '+getRank(clearTime);clearText.style.display='block'}}
-function animate(){const dt=Math.min(.033,clock.getDelta());if(input.release){player.wires.left.hooked=false;player.wires.right.hooked=false}player.vel.y-=14*dt;applyWire(player.wires.left,dt);applyWire(player.wires.right,dt);player.pos.addScaledVector(player.vel,dt*60);collide();player.vel.multiplyScalar(.993);player.vel.y*=.998;updateCamera(dt);updateAvatar();updateWireLines();checkGoal();updateUI();renderer.render(scene,camera);requestAnimationFrame(animate)}
+function animate(){const dt=Math.min(.033,clock.getDelta());if(input.release){player.wires.left.hooked=false;player.wires.right.hooked=false}player.vel.y-=14*dt;applyWire(player.wires.left,dt);applyWire(player.wires.right,dt);player.pos.addScaledVector(player.vel,dt*60);collide();player.vel.multiplyScalar(.993);player.vel.y*=.998;updateCamera(dt);updateAvatar();updateExternalCharacter(dt);updateWireLines();checkGoal();updateUI();renderer.render(scene,camera);requestAnimationFrame(animate)}
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();reset();animate();document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});document.addEventListener('contextmenu',e=>e.preventDefault(),{passive:false});
 </script>
 </body>
