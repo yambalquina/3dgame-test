@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype 3D 街区整理修正版</title>
+<title>立体機動装置 Prototype 3D Idleモデル版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -453,7 +453,7 @@ gltfLoader.load(
     box.getSize(size);
     box.getCenter(center);
 
-    const targetHeight = 8;
+    const targetHeight = 6;
     const modelHeight = Math.max(size.y, 0.0001);
     const scale = targetHeight / modelHeight;
 
@@ -475,10 +475,15 @@ gltfLoader.load(
     // ラッパーの追加縮小は使わない
     externalCharacter.scale.setScalar(1.0);
 
-    if(gltf.animations) gltf.animations.length = 0;
-    externalMixer = null;
+    if(gltf.animations && gltf.animations.length > 0){
+      externalMixer = new THREE.AnimationMixer(rawModel);
+      const action = externalMixer.clipAction(gltf.animations[0]);
+      action.reset();
+      action.setLoop(THREE.LoopRepeat);
+      action.play();
+    }
 
-    applyBaseCombatStance(rawModel);
+    // Idleアニメ優先: ロード時ポーズ補正なし
 
     externalReady = true;
     playerGroup.visible = false;
@@ -591,6 +596,10 @@ function updateExternalCharacter(dt){
 
   // 向き補正。逆向きなら + Math.PI を外す
   externalCharacter.rotation.y = player.yaw;
+
+  if(externalMixer){
+    externalMixer.update(dt);
+  }
 }
 
 const input={up:false,down:false,left:false,right:false,reel:false,release:false};let autoMode=false;const player={pos:new THREE.Vector3(0,60,0),vel:new THREE.Vector3(0,0,0),yaw:0,pitch:0,grounded:false,wires:{left:{hooked:false,point:new THREE.Vector3(),length:0},right:{hooked:false,point:new THREE.Vector3(),length:0}}};let startTime=performance.now(),clearTime=null,cleared=false;
