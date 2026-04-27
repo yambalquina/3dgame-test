@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype 3D GLB前傾構え版</title>
+<title>立体機動装置 Prototype GLB基本構え版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -35,6 +35,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
   pointer-events:none !important;
 }
 
+
+.notice{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;}
 </style>
 </head>
 <body>
@@ -294,7 +296,8 @@ gltfLoader.load(
     // GLB内のアニメーションはゲーム側で制御するまで完全に無視
     if(gltf.animations) gltf.animations.length = 0;
     externalMixer = null;
-    applyWrestlingStancePose(rawModel);
+
+    applyBaseCombatStance(rawModel);
 
     externalReady = true;
     playerGroup.visible = false;
@@ -323,62 +326,82 @@ function findBoneByKeywords(root, keywords){
   return found;
 }
 
+function cacheCharacterBones(model){
+  if(model.userData.bonesCached) return model.userData.bones;
+
+  const bones = {
+    hips: findBoneByKeywords(model, ["mixamorigHips", "hips"]),
+    spine: findBoneByKeywords(model, ["mixamorigSpine", "spine"]),
+    spine1: findBoneByKeywords(model, ["mixamorigSpine1", "spine1", "chest"]),
+    spine2: findBoneByKeywords(model, ["mixamorigSpine2", "spine2", "upperchest"]),
+    neck: findBoneByKeywords(model, ["mixamorigNeck", "neck"]),
+    head: findBoneByKeywords(model, ["mixamorigHead", "head"]),
+
+    lShoulder: findBoneByKeywords(model, ["mixamorigLeftShoulder", "leftshoulder"]),
+    rShoulder: findBoneByKeywords(model, ["mixamorigRightShoulder", "rightshoulder"]),
+    lArm: findBoneByKeywords(model, ["mixamorigLeftArm", "leftarm", "upperarm_l"]),
+    rArm: findBoneByKeywords(model, ["mixamorigRightArm", "rightarm", "upperarm_r"]),
+    lFore: findBoneByKeywords(model, ["mixamorigLeftForeArm", "leftforearm", "lowerarm_l"]),
+    rFore: findBoneByKeywords(model, ["mixamorigRightForeArm", "rightforearm", "lowerarm_r"]),
+    lHand: findBoneByKeywords(model, ["mixamorigLeftHand", "lefthand"]),
+    rHand: findBoneByKeywords(model, ["mixamorigRightHand", "righthand"]),
+
+    lUpLeg: findBoneByKeywords(model, ["mixamorigLeftUpLeg", "leftupleg", "thigh_l"]),
+    rUpLeg: findBoneByKeywords(model, ["mixamorigRightUpLeg", "rightupleg", "thigh_r"]),
+    lLeg: findBoneByKeywords(model, ["mixamorigLeftLeg", "leftleg", "calf_l"]),
+    rLeg: findBoneByKeywords(model, ["mixamorigRightLeg", "rightleg", "calf_r"]),
+    lFoot: findBoneByKeywords(model, ["mixamorigLeftFoot", "leftfoot"]),
+    rFoot: findBoneByKeywords(model, ["mixamorigRightFoot", "rightfoot"])
+  };
+
+  model.userData.bones = bones;
+  model.userData.bonesCached = true;
+  return bones;
+}
+
 function setBoneRot(bone, x=0, y=0, z=0){
   if(!bone) return;
   bone.rotation.set(x, y, z);
 }
 
-function applyWrestlingStancePose(model){
-  if(!model || model.userData.poseApplied) return;
+function applyBaseCombatStance(model){
+  if(!model) return;
+  const b = cacheCharacterBones(model);
 
-  // Mixamo名・一般名の両方を拾う
-  const spine = findBoneByKeywords(model, ["mixamorigspine", "spine"]);
-  const spine1 = findBoneByKeywords(model, ["mixamorigspine1", "spine1", "chest"]);
-  const spine2 = findBoneByKeywords(model, ["mixamorigspine2", "spine2", "upperchest"]);
-  const neck = findBoneByKeywords(model, ["mixamorigneck", "neck"]);
-  const head = findBoneByKeywords(model, ["mixamorighead", "head"]);
+  // 基本構え:
+  // 画像の左メインポーズを参考に、腰高・前傾・腕は胸前・膝は軽く曲げる。
+  // 左右対称にせず、左足をやや前、右足を支えにする。
+  setBoneRot(b.hips, 0.08, 0.00, -0.04);
+  setBoneRot(b.spine, 0.20, 0.00, 0.02);
+  setBoneRot(b.spine1, 0.22, 0.00, -0.03);
+  setBoneRot(b.spine2, 0.14, 0.00, 0.02);
+  setBoneRot(b.neck, -0.08, 0.00, 0.00);
+  setBoneRot(b.head, -0.06, 0.00, 0.00);
 
-  const lArm = findBoneByKeywords(model, ["mixamorigleftarm", "leftarm", "left_arm", "upperarm_l"]);
-  const rArm = findBoneByKeywords(model, ["mixamor rightarm", "mixamorigrightarm", "rightarm", "right_arm", "upperarm_r"]);
-  const lFore = findBoneByKeywords(model, ["mixamorigleftforearm", "leftforearm", "left_forearm", "lowerarm_l"]);
-  const rFore = findBoneByKeywords(model, ["mixamorigrightforearm", "rightforearm", "right_forearm", "lowerarm_r"]);
+  setBoneRot(b.lShoulder, 0.08, 0.00, -0.10);
+  setBoneRot(b.rShoulder, 0.08, 0.00, 0.10);
 
-  const lUpLeg = findBoneByKeywords(model, ["mixamorigleftupleg", "leftupleg", "left_up_leg", "thigh_l"]);
-  const rUpLeg = findBoneByKeywords(model, ["mixamorigrightupleg", "rightupleg", "right_up_leg", "thigh_r"]);
-  const lLeg = findBoneByKeywords(model, ["mixamorigleftleg", "leftleg", "left_leg", "calf_l"]);
-  const rLeg = findBoneByKeywords(model, ["mixamorigrightleg", "rightleg", "right_leg", "calf_r"]);
-  const lFoot = findBoneByKeywords(model, ["mixamorigleftfoot", "leftfoot", "left_foot", "foot_l"]);
-  const rFoot = findBoneByKeywords(model, ["mixamorigrightfoot", "rightfoot", "right_foot", "foot_r"]);
+  // 腕を胸の前に出す。股間前やTポーズにならないよう、肘を引きすぎない。
+  setBoneRot(b.lArm, 0.72, 0.16, -0.62);
+  setBoneRot(b.rArm, 0.66, -0.14, 0.54);
+  setBoneRot(b.lFore, -0.58, 0.08, 0.14);
+  setBoneRot(b.rFore, -0.52, -0.06, -0.12);
+  setBoneRot(b.lHand, 0.04, 0.00, 0.04);
+  setBoneRot(b.rHand, 0.04, 0.00, -0.04);
 
-  // 前傾構え:
-  // 体幹を前へ、腕は胸の前、脚は軽いワイドスタンス。
-  // GLBによって軸差があるので、控えめに入れて破綻しにくくする。
-  setBoneRot(spine, 0.18, 0, 0);
-  setBoneRot(spine1, 0.22, 0, 0.03);
-  setBoneRot(spine2, 0.18, 0, -0.03);
-  setBoneRot(neck, -0.08, 0, 0);
-  setBoneRot(head, -0.06, 0, 0);
-
-  // 腕: Tポーズ/貼り付け感を避けるため、肩を下げて肘を軽く曲げる。
-  setBoneRot(lArm, 0.75, 0.10, -0.75);
-  setBoneRot(rArm, 0.75, -0.10, 0.75);
-  setBoneRot(lFore, -0.65, 0.05, 0.08);
-  setBoneRot(rFore, -0.65, -0.05, -0.08);
-
-  // 脚: 高腰を維持しつつ、膝を少し曲げてレスリングの構えにする。
-  setBoneRot(lUpLeg, -0.28, 0.02, 0.18);
-  setBoneRot(rUpLeg, -0.20, -0.02, -0.16);
-  setBoneRot(lLeg, 0.48, 0, 0);
-  setBoneRot(rLeg, 0.42, 0, 0);
-  setBoneRot(lFoot, -0.14, 0, 0);
-  setBoneRot(rFoot, -0.12, 0, 0);
-
-  model.userData.poseApplied = true;
+  // 高腰のワイドスタンス。膝を曲げるが沈み込ませない。
+  setBoneRot(b.lUpLeg, -0.24, 0.04, 0.20);
+  setBoneRot(b.rUpLeg, -0.16, -0.02, -0.16);
+  setBoneRot(b.lLeg, 0.38, 0.00, 0.00);
+  setBoneRot(b.rLeg, 0.32, 0.00, 0.00);
+  setBoneRot(b.lFoot, -0.10, 0.00, -0.02);
+  setBoneRot(b.rFoot, -0.08, 0.00, 0.02);
 }
 
 function updateExternalCharacter(dt){
   if(!externalCharacter) return;
-  if(externalCharacter.children && externalCharacter.children[0]) applyWrestlingStancePose(externalCharacter.children[0]);
+  const raw = externalCharacter.children && externalCharacter.children[0];
+  if(raw) applyBaseCombatStance(raw);
 
   externalCharacter.position.copy(player.pos);
 
