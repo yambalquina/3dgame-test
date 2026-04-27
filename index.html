@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype 3D 腰ワイヤー版</title>
+<title>立体機動装置 Prototype 3D 腰ワイヤー左右修正版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -737,18 +737,18 @@ playerGroup.rotation.x=0.22;
 }
 
 function getWireOrigin(side){
-  // キャラの腰左右からワイヤーを出す
-  // side: "left" / "right"
-  const sideSign = side === "left" ? -1 : 1;
+  // キャラの左右腰からワイヤーを出す。
+  // 画面上でクロスしないよう、左右の符号を修正。
+  const sideSign = side === "left" ? 1 : -1;
 
-  // キャラの向きに対する右方向ベクトル
+  // キャラ基準の右方向ベクトル
   const right = new THREE.Vector3(
     Math.cos(player.yaw),
     0,
     -Math.sin(player.yaw)
   ).normalize();
 
-  // 前方向ベクトル。腰から少し前に出して身体へのめり込みを避ける
+  // キャラ基準の前方向ベクトル
   const forward = new THREE.Vector3(
     Math.sin(player.yaw),
     0,
@@ -757,14 +757,14 @@ function getWireOrigin(side){
 
   const origin = player.pos.clone();
 
-  // player.pos はゲーム内の胴体基準なので、腰位置へ少し下げる
-  origin.y -= 35;
+  // 腰の高さ。前回は低すぎたため、膝付近から腰付近へ上げる
+  origin.y -= 12;
 
   // 左右腰位置
-  origin.addScaledVector(right, sideSign * 22);
+  origin.addScaledVector(right, sideSign * 30);
 
-  // 少し前へ出す
-  origin.addScaledVector(forward, 8);
+  // 身体にめり込まないよう少し前へ
+  origin.addScaledVector(forward, 10);
 
   return origin;
 }
