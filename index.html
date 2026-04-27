@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype GLB基本構え版</title>
+<title>立体機動装置 Prototype GLB上下向き補正版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -246,6 +246,12 @@ let externalReady = false;
 let externalLoadFailed = false;
 const MODEL_EXTRA_SCALE = 1.0;
 
+// GLBモデルの向き補正。
+// 現状、頭が下・脚が上に見えているためX軸180度で上下を反転する。
+const MODEL_ROT_X = Math.PI;
+const MODEL_ROT_Y = 0;
+const MODEL_ROT_Z = 0;
+
 playerGroup.visible = true;
 
 const gltfLoader = new GLTFLoader();
@@ -286,7 +292,7 @@ gltfLoader.load(
     rawModel.scale.setScalar(scale);
 
     // Mixamo/Sketchfabで向きが違う場合に備えた初期補正
-    rawModel.rotation.y = Math.PI;
+    rawModel.rotation.set(MODEL_ROT_X, MODEL_ROT_Y, MODEL_ROT_Z);
 
     // 自動アニメーションは一旦OFF。
     // Mixamoアニメが勝手に再生されるとゲーム姿勢と噛み合わないため、
@@ -409,7 +415,7 @@ function updateExternalCharacter(dt){
   externalCharacter.position.y = player.pos.y - 0.75;
 
   // 向き補正。逆向きなら + Math.PI を外す
-  externalCharacter.rotation.y = player.yaw + Math.PI;
+  externalCharacter.rotation.y = player.yaw;
 }
 
 const input={up:false,down:false,left:false,right:false,reel:false,release:false};let autoMode=false;const player={pos:new THREE.Vector3(0,60,0),vel:new THREE.Vector3(0,0,0),yaw:0,pitch:0,grounded:false,wires:{left:{hooked:false,point:new THREE.Vector3(),length:0},right:{hooked:false,point:new THREE.Vector3(),length:0}}};let startTime=performance.now(),clearTime=null,cleared=false;
