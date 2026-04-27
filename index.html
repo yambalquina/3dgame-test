@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype GLB上下向き補正版</title>
+<title>立体機動装置 Prototype GLB向き補正B</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -248,8 +248,8 @@ const MODEL_EXTRA_SCALE = 1.0;
 
 // GLBモデルの向き補正。
 // 現状、頭が下・脚が上に見えているためX軸180度で上下を反転する。
-const MODEL_ROT_X = Math.PI;
-const MODEL_ROT_Y = 0;
+const MODEL_ROT_X = 0;
+const MODEL_ROT_Y = Math.PI;
 const MODEL_ROT_Z = 0;
 
 playerGroup.visible = true;
@@ -269,37 +269,42 @@ gltfLoader.load(
     });
 
     externalCharacter = new THREE.Group();
-    externalCharacter.add(rawModel);
     scene.add(externalCharacter);
-    externalCharacter.scale.setScalar(MODEL_EXTRA_SCALE);
-// まずモデルの境界を測る
-    const box = new THREE.Box3().setFromObject(rawModel);
+    externalCharacter.add(rawModel);
+
+    // まず向き補正をかける
+    rawModel.rotation.set(MODEL_ROT_X, MODEL_ROT_Y, MODEL_ROT_Z);
+    rawModel.updateMatrixWorld(true);
+
+    // 向き補正後の境界で、サイズ・中心・足元を正規化する
+    let box = new THREE.Box3().setFromObject(rawModel);
     const size = new THREE.Vector3();
     const center = new THREE.Vector3();
     box.getSize(size);
     box.getCenter(center);
 
-    // 目標身長。今のゲーム内アバターに合わせる
     const targetHeight = 1.5;
     const modelHeight = Math.max(size.y, 0.0001);
     const scale = targetHeight / modelHeight;
 
-    // モデル中心をX/Z中央へ、足元をY=0へ合わせる
-    rawModel.position.x -= center.x;
-    rawModel.position.z -= center.z;
+    rawModel.scale.setScalar(scale);
+    rawModel.updateMatrixWorld(true);
+
+    // スケール後にもう一度境界を測る
+    box = new THREE.Box3().setFromObject(rawModel);
+    const center2 = new THREE.Vector3();
+    box.getCenter(center2);
+
+    // X/Z中心をプレイヤー中心へ、最下点を足元へ合わせる
+    rawModel.position.x -= center2.x;
+    rawModel.position.z -= center2.z;
     rawModel.position.y -= box.min.y;
 
-    rawModel.scale.setScalar(scale);
+    rawModel.updateMatrixWorld(true);
 
-    // Mixamo/Sketchfabで向きが違う場合に備えた初期補正
-    rawModel.rotation.set(MODEL_ROT_X, MODEL_ROT_Y, MODEL_ROT_Z);
+    // ラッパーの追加縮小は使わない
+    externalCharacter.scale.setScalar(1.0);
 
-    // 自動アニメーションは一旦OFF。
-    // Mixamoアニメが勝手に再生されるとゲーム姿勢と噛み合わないため、
-    // 後で状態別に使うまで停止しておく。
-    externalMixer = null;
-
-    // GLB内のアニメーションはゲーム側で制御するまで完全に無視
     if(gltf.animations) gltf.animations.length = 0;
     externalMixer = null;
 
@@ -407,12 +412,12 @@ function applyBaseCombatStance(model){
 function updateExternalCharacter(dt){
   if(!externalCharacter) return;
   const raw = externalCharacter.children && externalCharacter.children[0];
-  if(raw) applyBaseCombatStance(raw);
+  // orientation test: pose disabled until upright confirmed
 
   externalCharacter.position.copy(player.pos);
 
   // 足元をプレイヤー接地点へ合わせる
-  externalCharacter.position.y = player.pos.y - 0.75;
+  externalCharacter.position.y = player.pos.y - 60;
 
   // 向き補正。逆向きなら + Math.PI を外す
   externalCharacter.rotation.y = player.yaw;
