@@ -45,7 +45,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 <script type="module">
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-const canvas=document.getElementById('game');const renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const canvas=document.getElementById('game');const loadStatus=document.getElementById('loadStatus');const renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x8ed0ff);scene.fog=new THREE.Fog(0xbfe6ff,1200,4800);const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,9000);const clock=new THREE.Clock();
 scene.add(new THREE.HemisphereLight(0xffffff,0x6b7a55,1.2));const sun=new THREE.DirectionalLight(0xffffff,1.6);sun.position.set(900,1600,700);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.near=50;sun.shadow.camera.far=5000;sun.shadow.camera.left=-2200;sun.shadow.camera.right=2200;sun.shadow.camera.top=2200;sun.shadow.camera.bottom=-2200;scene.add(sun);
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(12000,12000),new THREE.MeshStandardMaterial({color:0x74a85d,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
@@ -261,14 +261,14 @@ gltfLoader.load(
 
     externalReady = true;
     playerGroup.visible = false;
-    if(loadStatus) loadStatus.style.display = "none";
+    if(typeof loadStatus !== 'undefined' && loadStatus) loadStatus.style.display = "none";
   },
   undefined,
   (err) => {
     console.warn("peoplemodel.glb load failed:", err);
     externalLoadFailed = true;
     playerGroup.visible = true;
-    if(loadStatus) loadStatus.textContent = "peoplemodel.glbを読み込めませんでした。\nファイル名と配置を確認してください。";
+    if(typeof loadStatus !== 'undefined' && loadStatus) loadStatus.textContent = "peoplemodel.glbを読み込めませんでした。\nファイル名と配置を確認してください。";
   }
 );
 
