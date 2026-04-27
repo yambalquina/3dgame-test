@@ -453,7 +453,7 @@ gltfLoader.load(
     box.getSize(size);
     box.getCenter(center);
 
-    const targetHeight = 18;
+    const targetHeight = 100;
     const modelHeight = Math.max(size.y, 0.0001);
     const scale = targetHeight / modelHeight;
 
@@ -592,7 +592,7 @@ function updateExternalCharacter(dt){
   externalCharacter.position.copy(player.pos);
 
   // 足元をプレイヤー接地点へ合わせる
-  externalCharacter.position.y = player.pos.y - 9;
+  externalCharacter.position.y = player.pos.y - 50;
 
   // 向き補正。逆向きなら + Math.PI を外す
   externalCharacter.rotation.y = player.yaw + Math.PI;
