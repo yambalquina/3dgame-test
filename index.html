@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype 3D Idleモデル版</title>
+<title>立体機動装置 Prototype 3D Idleサイズ向き修正版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -453,7 +453,7 @@ gltfLoader.load(
     box.getSize(size);
     box.getCenter(center);
 
-    const targetHeight = 6;
+    const targetHeight = 18;
     const modelHeight = Math.max(size.y, 0.0001);
     const scale = targetHeight / modelHeight;
 
@@ -592,10 +592,10 @@ function updateExternalCharacter(dt){
   externalCharacter.position.copy(player.pos);
 
   // 足元をプレイヤー接地点へ合わせる
-  externalCharacter.position.y = player.pos.y - 0.75;
+  externalCharacter.position.y = player.pos.y - 9;
 
   // 向き補正。逆向きなら + Math.PI を外す
-  externalCharacter.rotation.y = player.yaw;
+  externalCharacter.rotation.y = player.yaw + Math.PI;
 
   if(externalMixer){
     externalMixer.update(dt);
