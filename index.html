@@ -9,17 +9,42 @@
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
 #game{position:fixed;inset:0;width:100vw;height:100vh;display:block;background:#000}
 #tapLayer{position:fixed;inset:0;z-index:5;background:transparent;touch-action:none}.hud{position:fixed;top:14px;right:14px;z-index:20;background:rgba(0,0,0,.42);color:#fff;border-radius:12px;padding:9px 11px;font-size:12px;line-height:1.55;text-align:right;backdrop-filter:blur(5px);min-width:120px}.system{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:25;display:flex;gap:8px}.system button,.mode button{border:none;background:rgba(255,255,255,.82);border-radius:12px;padding:8px 11px;font-weight:700;font-size:13px;box-shadow:0 8px 18px rgba(0,0,0,.16)}.mode{position:fixed;top:14px;left:14px;z-index:25}.ui{position:fixed;left:8vw;right:8vw;bottom:34px;z-index:20;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none}.ui>*{pointer-events:auto}.dpad{display:grid;grid-template-columns:58px 58px 58px;grid-template-rows:58px 58px 58px;gap:8px}.btn{border:none;background:rgba(255,255,255,.70);color:#111;border-radius:16px;font-weight:800;font-size:22px;box-shadow:0 8px 18px rgba(0,0,0,.14);touch-action:none}.btn:active{transform:scale(.97)}.actionArea{display:flex;flex-direction:column;gap:10px}.action{width:78px;height:78px;border-radius:50%}.crosshair{position:fixed;left:50%;top:50%;width:24px;height:24px;margin-left:-12px;margin-top:-12px;z-index:18;pointer-events:none}.crosshair::before,.crosshair::after{content:"";position:absolute;background:rgba(0,0,0,.85);border-radius:2px}.crosshair::before{width:24px;height:2px;top:11px;left:0}.crosshair::after{width:2px;height:24px;left:11px;top:0}.clear{position:fixed;left:50%;top:48%;transform:translate(-50%,-50%);z-index:40;color:#fff;font-size:48px;font-weight:900;text-shadow:0 0 20px rgba(0,0,0,.7);display:none;text-align:center}.notice{position:fixed;left:50%;bottom:132px;transform:translateX(-50%);z-index:19;background:rgba(0,0,0,.36);color:#fff;border-radius:999px;padding:7px 12px;font-size:11px;backdrop-filter:blur(5px)}body.auto .dpad{display:none}body.auto .ui{justify-content:flex-end}
+
+#loadStatus{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  z-index:100;
+  background:rgba(0,0,0,.65);
+  color:#fff;
+  padding:12px 16px;
+  border-radius:12px;
+  font-size:13px;
+  line-height:1.5;
+  text-align:center;
+  pointer-events:none;
+}
 </style>
 </head>
 <body>
-<canvas id="game"></canvas><div id="tapLayer"></div>
+<canvas id="game"></canvas>
+<div id="loadStatus">3D読み込み中...</div><div id="tapLayer"></div>
 <div class="mode"><button id="modeBtn">MANUAL</button></div><div class="system"><button id="resetBtn">リセット</button><button id="respawnBtn">リスポーン</button></div>
 <div class="hud"><div id="timeText">T:0.00</div><div id="heightText">H:0</div><div id="speedText">S:0</div><div id="wireText">L:OFF / R:OFF</div><div id="stateText">GROUND</div></div>
 <div class="crosshair"></div><div class="notice">GLB版：peoplemodel.glbを同じ階層に配置</div><div id="clearText" class="clear">CLEAR!!<br><span id="rankText" style="font-size:28px"></span></div>
 <div class="ui"><div class="dpad"><div></div><button class="btn" id="up">↑</button><div></div><button class="btn" id="left">←</button><div></div><button class="btn" id="right">→</button><div></div><button class="btn" id="down">↓</button><div></div></div><div class="actionArea"><button class="btn action" id="reel">A</button><button class="btn action" id="release">B</button></div></div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 <script type="module">
-import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
-import { GLTFLoader } from "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 const canvas=document.getElementById('game');const renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x8ed0ff);scene.fog=new THREE.Fog(0xbfe6ff,1200,4800);const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,9000);const clock=new THREE.Clock();
 scene.add(new THREE.HemisphereLight(0xffffff,0x6b7a55,1.2));const sun=new THREE.DirectionalLight(0xffffff,1.6);sun.position.set(900,1600,700);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.near=50;sun.shadow.camera.far=5000;sun.shadow.camera.left=-2200;sun.shadow.camera.right=2200;sun.shadow.camera.top=2200;sun.shadow.camera.bottom=-2200;scene.add(sun);
@@ -236,12 +261,14 @@ gltfLoader.load(
 
     externalReady = true;
     playerGroup.visible = false;
+    if(loadStatus) loadStatus.style.display = "none";
   },
   undefined,
   (err) => {
     console.warn("peoplemodel.glb load failed:", err);
     externalLoadFailed = true;
     playerGroup.visible = true;
+    if(loadStatus) loadStatus.textContent = "peoplemodel.glbを読み込めませんでした。\nファイル名と配置を確認してください。";
   }
 );
 
@@ -398,7 +425,9 @@ function updateWireLines(){function setLine(line,w,offset){if(!w.hooked){line.vi
 function getRank(sec){if(sec<=18)return'S';if(sec<=30)return'A';if(sec<=45)return'B';if(sec<=60)return'C';return'D'}function updateUI(){const elapsed=clearTime??(performance.now()-startTime)/1000;timeText.textContent='T:'+elapsed.toFixed(2);heightText.textContent='H:'+Math.floor(player.pos.y);speedText.textContent='S:'+Math.floor(player.vel.length()*10);wireText.textContent='L:'+(player.wires.left.hooked?'ON':'OFF')+' / R:'+(player.wires.right.hooked?'ON':'OFF');stateText.textContent=(externalReady?'MODEL':'FALLBACK')+' / '+(player.grounded?'GROUND':'AIR')}
 function checkGoal(){if(cleared)return;const d=Math.hypot(player.pos.x-goalX,player.pos.z-goalZ);if(d<160&&player.pos.y<430){cleared=true;clearTime=(performance.now()-startTime)/1000;rankText.textContent='TIME '+clearTime.toFixed(2)+' / RANK '+getRank(clearTime);clearText.style.display='block'}}
 function animate(){const dt=Math.min(.033,clock.getDelta());if(input.release){player.wires.left.hooked=false;player.wires.right.hooked=false}player.vel.y-=14*dt;applyWire(player.wires.left,dt);applyWire(player.wires.right,dt);player.pos.addScaledVector(player.vel,dt*60);collide();player.vel.multiplyScalar(.993);player.vel.y*=.998;updateCamera(dt);updateAvatar();updateExternalCharacter(dt);updateWireLines();checkGoal();updateUI();renderer.render(scene,camera);requestAnimationFrame(animate)}
-function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();reset();animate();document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});document.addEventListener('contextmenu',e=>e.preventDefault(),{passive:false});
+function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();reset();
+setTimeout(()=>{ if(loadStatus && !externalReady && !externalLoadFailed) loadStatus.textContent="3Dは起動済み。モデル読込中..."; }, 1200);
+animate();document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});document.addEventListener('contextmenu',e=>e.preventDefault(),{passive:false});
 </script>
 </body>
 </html>
