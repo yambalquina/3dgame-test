@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype 3D GLBモデル自動補正版</title>
+<title>立体機動装置 Prototype 3D GLB小型化版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -32,7 +32,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 <div id="loadStatus">3D読み込み中...</div><div id="tapLayer"></div>
 <div class="mode"><button id="modeBtn">MANUAL</button></div><div class="system"><button id="resetBtn">リセット</button><button id="respawnBtn">リスポーン</button></div>
 <div class="hud"><div id="timeText">T:0.00</div><div id="heightText">H:0</div><div id="speedText">S:0</div><div id="wireText">L:OFF / R:OFF</div><div id="stateText">GROUND</div></div>
-<div class="crosshair"></div><div class="notice">GLB版：モデル自動サイズ補正</div><div id="clearText" class="clear">CLEAR!!<br><span id="rankText" style="font-size:28px"></span></div>
+<div class="crosshair"></div><div class="notice">GLB版：小型化＋自動アニメOFF</div><div id="clearText" class="clear">CLEAR!!<br><span id="rankText" style="font-size:28px"></span></div>
 <div class="ui"><div class="dpad"><div></div><button class="btn" id="up">↑</button><div></div><button class="btn" id="left">←</button><div></div><button class="btn" id="right">→</button><div></div><button class="btn" id="down">↓</button><div></div></div><div class="actionArea"><button class="btn action" id="reel">A</button><button class="btn action" id="release">B</button></div></div>
 <script type="importmap">
 {
@@ -261,7 +261,7 @@ gltfLoader.load(
     box.getCenter(center);
 
     // 目標身長。今のゲーム内アバターに合わせる
-    const targetHeight = 170;
+    const targetHeight = 58;
     const modelHeight = Math.max(size.y, 0.0001);
     const scale = targetHeight / modelHeight;
 
@@ -275,11 +275,10 @@ gltfLoader.load(
     // Mixamo/Sketchfabで向きが違う場合に備えた初期補正
     rawModel.rotation.y = Math.PI;
 
-    if(gltf.animations && gltf.animations.length > 0){
-      externalMixer = new THREE.AnimationMixer(rawModel);
-      const action = externalMixer.clipAction(gltf.animations[0]);
-      action.play();
-    }
+    // 自動アニメーションは一旦OFF。
+    // Mixamoアニメが勝手に再生されるとゲーム姿勢と噛み合わないため、
+    // 後で状態別に使うまで停止しておく。
+    externalMixer = null;
 
     externalReady = true;
     playerGroup.visible = false;
@@ -300,7 +299,7 @@ function updateExternalCharacter(dt){
   externalCharacter.position.copy(player.pos);
 
   // 足元をプレイヤー接地点へ合わせる
-  externalCharacter.position.y = player.pos.y - 58;
+  externalCharacter.position.y = player.pos.y - 30;
 
   // 向き補正。逆向きなら + Math.PI を外す
   externalCharacter.rotation.y = player.yaw + Math.PI;
