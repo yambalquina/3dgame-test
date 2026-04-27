@@ -758,7 +758,7 @@ function getWireOrigin(side){
   const origin = player.pos.clone();
 
   // 腰の高さ。前回は低すぎたため、膝付近から腰付近へ上げる
-  origin.y -= 12;
+  origin.y -= 5;
 
   // 左右腰位置
   origin.addScaledVector(right, sideSign * 15);
