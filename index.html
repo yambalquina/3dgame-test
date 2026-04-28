@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype 3D 腰ワイヤー左右修正版</title>
+<title>立体機動装置 Prototype 3D 上階アンカー強化版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -107,6 +107,7 @@ for(let i=-CITY_RANGE;i<=CITY_RANGE;i++){
 
 const buildings = [];
 const solids = [];
+const hookTargets = [];
 
 const palettes = [
   {wall:0xb56d58, roof:0x6f3028, trim:0x7d463a},
@@ -133,6 +134,8 @@ function createBuilding(x,z,w,d,h,pal){
 
   const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), bWallMat);
   body.castShadow = body.receiveShadow = true;
+  body.userData.isHookTarget = true;
+  hookTargets.push(body);
   group.add(body);
 
   const roof = new THREE.Mesh(new THREE.BoxGeometry(w*1.08,18,d*1.08), bRoofMat);
@@ -404,8 +407,8 @@ const avatarAnim={
 function lerpAvatar(a,b,t){return a+(b-a)*t}
 function smoothAvatar(target,rate=.16){for(const k in target){avatarAnim[k]=lerpAvatar(avatarAnim[k]??0,target[k],rate)}}
 
-const leftLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x222222}));
-const rightLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x111111}));
+const leftLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x111111,linewidth:2}));
+const rightLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x111111,linewidth:2}));
 scene.add(leftLine,rightLine);
 
 // ---- External GLB character ----
@@ -434,6 +437,7 @@ gltfLoader.load(
       if(obj.isMesh){
         obj.castShadow = true;
         obj.receiveShadow = true;
+        obj.userData.isPlayerModel = true;
         obj.frustumCulled = false;
       }
     });
@@ -607,7 +611,56 @@ function reset(){player.pos.set(0,80,0);player.vel.set(0,0,0);player.yaw=0;playe
 function bind(id,key){const el=document.getElementById(id),on=e=>{e.preventDefault();input[key]=true},off=e=>{e.preventDefault();input[key]=false};['pointerdown','touchstart','mousedown'].forEach(ev=>el.addEventListener(ev,on,{passive:false}));['pointerup','pointercancel','touchend','touchcancel','mouseup','mouseleave'].forEach(ev=>el.addEventListener(ev,off,{passive:false}))}['up','down','left','right','reel','release'].forEach(v=>bind(v,v));
 document.addEventListener('keydown',e=>{if(e.key==='ArrowUp')input.up=true;if(e.key==='ArrowDown')input.down=true;if(e.key==='ArrowLeft')input.left=true;if(e.key==='ArrowRight')input.right=true;if(e.key.toLowerCase()==='a')input.reel=true;if(e.key.toLowerCase()==='b')input.release=true});document.addEventListener('keyup',e=>{if(e.key==='ArrowUp')input.up=false;if(e.key==='ArrowDown')input.down=false;if(e.key==='ArrowLeft')input.left=false;if(e.key==='ArrowRight')input.right=false;if(e.key.toLowerCase()==='a')input.reel=false;if(e.key.toLowerCase()==='b')input.release=false});
 function forwardVector(){return new THREE.Vector3(Math.sin(player.yaw)*Math.cos(player.pitch),Math.sin(player.pitch),Math.cos(player.yaw)*Math.cos(player.pitch)).normalize()}
-function shootWire(side,sx,sy){const ndc=new THREE.Vector2((sx/innerWidth)*2-1,-(sy/innerHeight)*2+1);const raycaster=new THREE.Raycaster();raycaster.setFromCamera(ndc,camera);raycaster.far=5000;const objects=[];scene.traverse(o=>{if(o.isMesh&&o!==ground&&o.parent!==playerGroup)objects.push(o)});const hits=raycaster.intersectObjects(objects,true);let hit=hits.find(h=>h.distance>70);if(!hit){const gh=raycaster.intersectObject(ground);hit=gh.find(h=>h.distance>70)}if(!hit)return;const f=forwardVector(),toHit=hit.point.clone().sub(player.pos).normalize();if(f.dot(toHit)<.06)return;const w=player.wires[side];w.hooked=true;w.point.copy(hit.point);w.length=getWireOrigin(side).distanceTo(hit.point)}
+function shootWire(side,sx,sy){
+  const ndc=new THREE.Vector2((sx/innerWidth)*2-1,-(sy/innerHeight)*2+1);
+  const raycaster=new THREE.Raycaster();
+  raycaster.setFromCamera(ndc,camera);
+  raycaster.far=8000;
+
+  let hit=null;
+
+  // 建物本体を最優先で判定。窓・装飾・道路などを先に拾う問題を回避する。
+  if(typeof hookTargets!=='undefined' && hookTargets.length>0){
+    const buildingHits=raycaster.intersectObjects(hookTargets,false);
+    hit=buildingHits.find(h=>h.distance>40);
+  }
+
+  // 建物に当たらなかった場合だけ他オブジェクトへフォールバック
+  if(!hit){
+    const objects=[];
+    scene.traverse(o=>{
+      if(
+        o.isMesh &&
+        o!==ground &&
+        o.parent!==playerGroup &&
+        !o.userData?.isPlayerModel
+      ){
+        objects.push(o);
+      }
+    });
+    const hits=raycaster.intersectObjects(objects,true);
+    hit=hits.find(h=>h.distance>70);
+  }
+
+  // 救済として地面も候補
+  if(!hit){
+    const gh=raycaster.intersectObject(ground);
+    hit=gh.find(h=>h.distance>70);
+  }
+
+  if(!hit)return;
+
+  const f=forwardVector();
+  const toHit=hit.point.clone().sub(player.pos).normalize();
+
+  // ほぼ真横・後方だけ除外。上階狙いをしやすくするため緩める。
+  if(f.dot(toHit)<0.01)return;
+
+  const w=player.wires[side];
+  w.hooked=true;
+  w.point.copy(hit.point);
+  w.length=getWireOrigin(side).distanceTo(hit.point);
+}
 document.getElementById('tapLayer').addEventListener('pointerdown',e=>{if(e.target.id!=='tapLayer')return;e.preventDefault();shootWire(e.clientX<innerWidth/2?'left':'right',e.clientX,e.clientY)},{passive:false});
 function collide(){const radius=28;player.grounded=false;if(player.pos.y<60){player.pos.y=60;if(player.vel.y<0)player.vel.y=0;player.grounded=true}for(const b of solids){if(player.pos.y>b.h+80)continue;const insideX=player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius,insideZ=player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius;if(insideX&&insideZ&&player.pos.y<b.h+70){const left=Math.abs(player.pos.x-(b.x-radius)),right=Math.abs(player.pos.x-(b.x+b.w+radius)),front=Math.abs(player.pos.z-(b.z-radius)),back=Math.abs(player.pos.z-(b.z+b.d+radius)),min=Math.min(left,right,front,back);if(min===left){player.pos.x=b.x-radius;player.vel.x*=.25}else if(min===right){player.pos.x=b.x+b.w+radius;player.vel.x*=.25}else if(min===front){player.pos.z=b.z-radius;player.vel.z*=.25}else{player.pos.z=b.z+b.d+radius;player.vel.z*=.25}}if(player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius&&player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius&&player.pos.y<b.h+60&&player.pos.y>b.h-30&&player.vel.y<=0){player.pos.y=b.h+60;player.vel.y=0;player.grounded=true}}}
 function applyWire(w,dt){if(!w.hooked)return;const toPlayer=player.pos.clone().sub(w.point),dist=toPlayer.length();if(dist<1)return;const n=toPlayer.clone().normalize();if(input.reel){w.length=Math.max(90,w.length-(8+Math.min(22,dist*.018)))}else{w.length=Math.min(w.length+.5,dist+26)}if(dist>w.length){const excess=dist-w.length;player.pos.addScaledVector(n,-excess);const radial=player.vel.dot(n);if(radial>0)player.vel.addScaledVector(n,-radial);if(input.reel){player.vel.addScaledVector(n,-(14+Math.min(30,excess*.08))*dt*60)}}}
