@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype 3D 上階アンカー強化版</title>
+<title>立体機動装置 Prototype 3D ワイヤー快感調整版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -663,7 +663,63 @@ function shootWire(side,sx,sy){
 }
 document.getElementById('tapLayer').addEventListener('pointerdown',e=>{if(e.target.id!=='tapLayer')return;e.preventDefault();shootWire(e.clientX<innerWidth/2?'left':'right',e.clientX,e.clientY)},{passive:false});
 function collide(){const radius=28;player.grounded=false;if(player.pos.y<60){player.pos.y=60;if(player.vel.y<0)player.vel.y=0;player.grounded=true}for(const b of solids){if(player.pos.y>b.h+80)continue;const insideX=player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius,insideZ=player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius;if(insideX&&insideZ&&player.pos.y<b.h+70){const left=Math.abs(player.pos.x-(b.x-radius)),right=Math.abs(player.pos.x-(b.x+b.w+radius)),front=Math.abs(player.pos.z-(b.z-radius)),back=Math.abs(player.pos.z-(b.z+b.d+radius)),min=Math.min(left,right,front,back);if(min===left){player.pos.x=b.x-radius;player.vel.x*=.25}else if(min===right){player.pos.x=b.x+b.w+radius;player.vel.x*=.25}else if(min===front){player.pos.z=b.z-radius;player.vel.z*=.25}else{player.pos.z=b.z+b.d+radius;player.vel.z*=.25}}if(player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius&&player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius&&player.pos.y<b.h+60&&player.pos.y>b.h-30&&player.vel.y<=0){player.pos.y=b.h+60;player.vel.y=0;player.grounded=true}}}
-function applyWire(w,dt){if(!w.hooked)return;const toPlayer=player.pos.clone().sub(w.point),dist=toPlayer.length();if(dist<1)return;const n=toPlayer.clone().normalize();if(input.reel){w.length=Math.max(90,w.length-(8+Math.min(22,dist*.018)))}else{w.length=Math.min(w.length+.5,dist+26)}if(dist>w.length){const excess=dist-w.length;player.pos.addScaledVector(n,-excess);const radial=player.vel.dot(n);if(radial>0)player.vel.addScaledVector(n,-radial);if(input.reel){player.vel.addScaledVector(n,-(14+Math.min(30,excess*.08))*dt*60)}}}
+function applyWire(w,dt){
+  if(!w.hooked)return;
+
+  const toPlayer=player.pos.clone().sub(w.point);
+  const dist=toPlayer.length();
+  if(dist<1)return;
+
+  const n=toPlayer.clone().normalize();
+  const speed=player.vel.length();
+
+  // 速度があるほど少し伸びを許す。急停止を減らして振り子感を出す。
+  const elasticAllowance=Math.min(90,speed*1.25);
+
+  if(input.reel){
+    // A巻き取り時の短縮を強化。遠いほど強く巻く。
+    const reelSpeed=18+Math.min(58,dist*.035);
+    w.length=Math.max(70,w.length-reelSpeed);
+  }else{
+    // 非巻き取り時は少し伸びる。動きの自由度を残す。
+    w.length=Math.min(w.length+1.4,dist+elasticAllowance);
+  }
+
+  const effectiveLength=w.length+elasticAllowance*.28;
+
+  if(dist>effectiveLength){
+    const excess=dist-effectiveLength;
+
+    // 張った時の位置補正。強すぎるとカクつくので少し控えめ。
+    player.pos.addScaledVector(n,-excess*.72);
+
+    // 外向き速度を殺しつつ、少し残して振り子感を維持。
+    const radial=player.vel.dot(n);
+    if(radial>0){
+      player.vel.addScaledVector(n,-radial*.82);
+    }
+
+    // テンション加速。巻き取り中は明確にアンカーへ吸わせる。
+    const tensionBase=input.reel?30:10;
+    const tension=tensionBase+Math.min(70,excess*.28);
+    player.vel.addScaledVector(n,-tension*dt*60);
+
+    // 横方向の速度を少し伸ばして弧を描く感覚を出す。
+    const tangent=player.vel.clone().addScaledVector(n,-player.vel.dot(n));
+    const tLen=tangent.length();
+    if(tLen>0.1){
+      const swingBoost=input.reel?0.016:0.008;
+      player.vel.addScaledVector(tangent.normalize(),Math.min(1.2,tLen*swingBoost));
+    }
+  }
+
+  // A巻き取り中は距離内でも軽くアンカー方向へ吸う。
+  if(input.reel){
+    const pull=10+Math.min(36,dist*.018);
+    player.vel.addScaledVector(n,-pull*dt*60);
+  }
+}
+
 function updateCamera(dt){if(autoMode){const dx=goalX-player.pos.x,dz=goalZ-player.pos.z,targetYaw=Math.atan2(dx,dz);let diff=targetYaw-player.yaw;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;player.yaw+=diff*.05;const dist=Math.hypot(dx,dz),targetPitch=THREE.MathUtils.clamp(Math.atan2(160-player.pos.y,dist)+.05,-.55,.55);player.pitch+=(targetPitch-player.pitch)*.04}else{if(input.left)player.yaw+=1.8*dt;if(input.right)player.yaw-=1.8*dt;if(input.up)player.pitch+=1.2*dt;if(input.down)player.pitch-=1.2*dt;player.pitch=THREE.MathUtils.clamp(player.pitch,-1.2,1.2)}const f=forwardVector(),target=player.pos.clone().add(new THREE.Vector3(0,40,0)),camPos=target.clone().addScaledVector(f,-230).add(new THREE.Vector3(0,80,0));camera.position.lerp(camPos,.22);camera.lookAt(target.clone().addScaledVector(f,180))}
 function updateAvatar(){
   playerGroup.position.copy(player.pos);
@@ -840,7 +896,11 @@ function updateWireLines(){
 }
 function getRank(sec){if(sec<=18)return'S';if(sec<=30)return'A';if(sec<=45)return'B';if(sec<=60)return'C';return'D'}function updateUI(){const elapsed=clearTime??(performance.now()-startTime)/1000;timeText.textContent='T:'+elapsed.toFixed(2);heightText.textContent='H:'+Math.floor(player.pos.y);speedText.textContent='S:'+Math.floor(player.vel.length()*10);wireText.textContent='L:'+(player.wires.left.hooked?'ON':'OFF')+' / R:'+(player.wires.right.hooked?'ON':'OFF');stateText.textContent=(externalReady?'MODEL':'FALLBACK')+' / '+(player.grounded?'GROUND':'AIR')}
 function checkGoal(){if(cleared)return;const d=Math.hypot(player.pos.x-goalX,player.pos.z-goalZ);if(d<160&&player.pos.y<430){cleared=true;clearTime=(performance.now()-startTime)/1000;rankText.textContent='TIME '+clearTime.toFixed(2)+' / RANK '+getRank(clearTime);clearText.style.display='block'}}
-function animate(){const dt=Math.min(.033,clock.getDelta());if(input.release){player.wires.left.hooked=false;player.wires.right.hooked=false}player.vel.y-=14*dt;applyWire(player.wires.left,dt);applyWire(player.wires.right,dt);player.pos.addScaledVector(player.vel,dt*60);collide();player.vel.multiplyScalar(.993);player.vel.y*=.998;updateCamera(dt);updateAvatar();updateExternalCharacter(dt);updateWireLines();checkGoal();updateUI();renderer.render(scene,camera);requestAnimationFrame(animate)}
+function animate(){const dt=Math.min(.033,clock.getDelta());if(input.release){player.wires.left.hooked=false;player.wires.right.hooked=false}player.vel.y-=14*dt;applyWire(player.wires.left,dt);applyWire(player.wires.right,dt);const MAX_SPEED=95;
+  if(player.vel.length()>MAX_SPEED){
+    player.vel.setLength(MAX_SPEED);
+  }
+  player.pos.addScaledVector(player.vel,dt*60);collide();player.vel.multiplyScalar(.996);player.vel.y*=.999;updateCamera(dt);updateAvatar();updateExternalCharacter(dt);updateWireLines();checkGoal();updateUI();renderer.render(scene,camera);requestAnimationFrame(animate)}
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();reset();
 setTimeout(()=>{ if(loadStatus && !externalReady && !externalLoadFailed) loadStatus.textContent="3Dは起動済み。モデル読込中..."; }, 1200);
 animate();document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});document.addEventListener('contextmenu',e=>e.preventDefault(),{passive:false});
