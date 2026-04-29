@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype 3D ワイヤー快感調整版</title>
+<title>立体機動装置 Prototype 3D ワイヤー快感調整v2</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -673,47 +673,55 @@ function applyWire(w,dt){
   const n=toPlayer.clone().normalize();
   const speed=player.vel.length();
 
-  // 速度があるほど少し伸びを許す。急停止を減らして振り子感を出す。
-  const elasticAllowance=Math.min(90,speed*1.25);
+  // ゴム感は残す。ただし非A時に勝手に吸い込まれないよう控えめ。
+  const elasticAllowance=Math.min(80,speed*1.10);
 
   if(input.reel){
-    // A巻き取り時の短縮を強化。遠いほど強く巻く。
+    // A巻き取り時だけ、ワイヤー長を明確に短くする
     const reelSpeed=18+Math.min(58,dist*.035);
     w.length=Math.max(70,w.length-reelSpeed);
   }else{
-    // 非巻き取り時は少し伸びる。動きの自由度を残す。
-    w.length=Math.min(w.length+1.4,dist+elasticAllowance);
+    // Aを押していない時は巻き取らない。
+    // 現在距離より少し長いところまで緩ませるだけ。
+    w.length=Math.max(w.length,dist*.96);
+    w.length=Math.min(w.length+1.8,dist+elasticAllowance);
   }
 
-  const effectiveLength=w.length+elasticAllowance*.28;
+  const effectiveLength=w.length+elasticAllowance*.22;
 
   if(dist>effectiveLength){
     const excess=dist-effectiveLength;
 
-    // 張った時の位置補正。強すぎるとカクつくので少し控えめ。
-    player.pos.addScaledVector(n,-excess*.72);
+    // 非A時は「張るだけ」に近づける。位置補正を弱める。
+    const posCorrection=input.reel?.72:.28;
+    player.pos.addScaledVector(n,-excess*posCorrection);
 
-    // 外向き速度を殺しつつ、少し残して振り子感を維持。
+    // 外向き速度だけを抑える。非A時は抑制控えめ。
     const radial=player.vel.dot(n);
     if(radial>0){
-      player.vel.addScaledVector(n,-radial*.82);
+      const radialKill=input.reel?.82:.42;
+      player.vel.addScaledVector(n,-radial*radialKill);
     }
 
-    // テンション加速。巻き取り中は明確にアンカーへ吸わせる。
-    const tensionBase=input.reel?30:10;
-    const tension=tensionBase+Math.min(70,excess*.28);
+    // テンション加速。
+    // 非A時はアンカー方向への加速をかなり弱め、勝手な巻き取り感を消す。
+    const tensionBase=input.reel?30:1.8;
+    const tension=input.reel
+      ? tensionBase+Math.min(70,excess*.28)
+      : tensionBase+Math.min(8,excess*.035);
+
     player.vel.addScaledVector(n,-tension*dt*60);
 
-    // 横方向の速度を少し伸ばして弧を描く感覚を出す。
+    // 振り子感。非A時も少しだけ横方向は残す。
     const tangent=player.vel.clone().addScaledVector(n,-player.vel.dot(n));
     const tLen=tangent.length();
     if(tLen>0.1){
-      const swingBoost=input.reel?0.016:0.008;
-      player.vel.addScaledVector(tangent.normalize(),Math.min(1.2,tLen*swingBoost));
+      const swingBoost=input.reel?.016:.005;
+      player.vel.addScaledVector(tangent.normalize(),Math.min(input.reel?1.2:.35,tLen*swingBoost));
     }
   }
 
-  // A巻き取り中は距離内でも軽くアンカー方向へ吸う。
+  // A巻き取り中だけ、距離内でもアンカー方向へ吸わせる
   if(input.reel){
     const pull=10+Math.min(36,dist*.018);
     player.vel.addScaledVector(n,-pull*dt*60);
