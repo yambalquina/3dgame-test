@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>立体機動装置 Prototype 3D プレイ可能デバッグ版</title>
+<title>立体機動装置 Prototype 3D アンカー到達吸収版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -613,7 +613,15 @@ function updateExternalCharacter(dt){
   }
 }
 
-const input={up:false,down:false,left:false,right:false,reel:false,release:false};let reelWasDown=false;let autoMode=false;const player={pos:new THREE.Vector3(0,60,0),vel:new THREE.Vector3(0,0,0),yaw:0,pitch:0,grounded:false,wires:{left:{hooked:false,point:new THREE.Vector3(),length:0},right:{hooked:false,point:new THREE.Vector3(),length:0}}};let startTime=performance.now(),clearTime=null,cleared=false;
+const input={up:false,down:false,left:false,right:false,reel:false,release:false};let reelWasDown=false;
+const ANCHOR_SETTLE_DIST=95;
+const WALL_HOLD_LENGTH=115;
+const SETTLE_DAMPING=0.18;
+let anchorSettled=false;let reelWasDown=false;
+const ANCHOR_SETTLE_DIST=95;      // アンカー到達判定
+const WALL_HOLD_LENGTH=115;       // 壁面ホールド時のワイヤー長。ほぼ身長相当
+const SETTLE_DAMPING=0.18;        // 到達時の衝撃吸収
+let anchorSettled=false;let autoMode=false;const player={pos:new THREE.Vector3(0,60,0),vel:new THREE.Vector3(0,0,0),yaw:0,pitch:0,grounded:false,wires:{left:{hooked:false,point:new THREE.Vector3(),length:0},right:{hooked:false,point:new THREE.Vector3(),length:0}}};let startTime=performance.now(),clearTime=null,cleared=false;
 function reset(){player.pos.set(0,80,0);player.vel.set(0,0,0);player.yaw=0;player.pitch=0;player.wires.left.hooked=false;player.wires.right.hooked=false;startTime=performance.now();clearTime=null;cleared=false;document.getElementById('clearText').style.display='none'}function respawn(){player.pos.set(0,360,0);player.vel.set(0,0,0);player.wires.left.hooked=false;player.wires.right.hooked=false}document.getElementById('resetBtn').onclick=reset;document.getElementById('respawnBtn').onclick=respawn;document.getElementById('modeBtn').onclick=()=>{autoMode=!autoMode;document.body.classList.toggle('auto',autoMode);document.getElementById('modeBtn').textContent=autoMode?'AUTO':'MANUAL'};
 function bind(id,key){const el=document.getElementById(id),on=e=>{e.preventDefault();input[key]=true},off=e=>{e.preventDefault();input[key]=false};['pointerdown','touchstart','mousedown'].forEach(ev=>el.addEventListener(ev,on,{passive:false}));['pointerup','pointercancel','touchend','touchcancel','mouseup','mouseleave'].forEach(ev=>el.addEventListener(ev,off,{passive:false}))}['up','down','left','right','reel','release'].forEach(v=>bind(v,v));
 document.addEventListener('keydown',e=>{if(e.key==='ArrowUp')input.up=true;if(e.key==='ArrowDown')input.down=true;if(e.key==='ArrowLeft')input.left=true;if(e.key==='ArrowRight')input.right=true;if(e.key.toLowerCase()==='a')input.reel=true;if(e.key.toLowerCase()==='b')input.release=true});document.addEventListener('keyup',e=>{if(e.key==='ArrowUp')input.up=false;if(e.key==='ArrowDown')input.down=false;if(e.key==='ArrowLeft')input.left=false;if(e.key==='ArrowRight')input.right=false;if(e.key.toLowerCase()==='a')input.reel=false;if(e.key.toLowerCase()==='b')input.release=false});
@@ -676,6 +684,61 @@ function shootWire(side,sx,sy){
 }
 document.getElementById('tapLayer').addEventListener('pointerdown',e=>{if(e.target.id!=='tapLayer')return;e.preventDefault();shootWire(e.clientX<innerWidth/2?'left':'right',e.clientX,e.clientY)},{passive:false});
 function collide(){const radius=28;player.grounded=false;if(player.pos.y<60){player.pos.y=60;if(player.vel.y<0)player.vel.y=0;player.grounded=true}for(const b of solids){if(player.pos.y>b.h+80)continue;const insideX=player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius,insideZ=player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius;if(insideX&&insideZ&&player.pos.y<b.h+70){const left=Math.abs(player.pos.x-(b.x-radius)),right=Math.abs(player.pos.x-(b.x+b.w+radius)),front=Math.abs(player.pos.z-(b.z-radius)),back=Math.abs(player.pos.z-(b.z+b.d+radius)),min=Math.min(left,right,front,back);if(min===left){player.pos.x=b.x-radius;player.vel.x*=.25}else if(min===right){player.pos.x=b.x+b.w+radius;player.vel.x*=.25}else if(min===front){player.pos.z=b.z-radius;player.vel.z*=.25}else{player.pos.z=b.z+b.d+radius;player.vel.z*=.25}}if(player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius&&player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius&&player.pos.y<b.h+60&&player.pos.y>b.h-30&&player.vel.y<=0){player.pos.y=b.h+60;player.vel.y=0;player.grounded=true}}}
+
+function getActiveAnchorCenter(){
+  const points=[];
+  if(player.wires.left.hooked)points.push(player.wires.left.point);
+  if(player.wires.right.hooked)points.push(player.wires.right.point);
+  if(!points.length)return null;
+  const center=new THREE.Vector3();
+  for(const p of points)center.add(p);
+  center.multiplyScalar(1/points.length);
+  return center;
+}
+
+function settleAtAnchorIfNeeded(){
+  const anchor=getActiveAnchorCenter();
+  if(!anchor || !input.reel)return false;
+
+  const dist=player.pos.distanceTo(anchor);
+  if(dist>ANCHOR_SETTLE_DIST)return false;
+
+  // 到達。まず速度を吸収してブルブルのエネルギーを消す。
+  player.vel.multiplyScalar(SETTLE_DAMPING);
+
+  // 地面に近い場合は着地として扱う
+  if(player.pos.y<=72){
+    player.pos.y=60;
+    player.vel.set(0,0,0);
+    player.grounded=true;
+    player.wires.left.hooked=false;
+    player.wires.right.hooked=false;
+    anchorSettled=false;
+    return true;
+  }
+
+  // 壁面/空中寄りの場合:
+  // 巻き取り切りを止め、身長相当の長さでホールドする。
+  // これによりアンカーと同一点に押し込まれて震えるのを防ぐ。
+  for(const side of ["left","right"]){
+    const w=player.wires[side];
+    if(w.hooked){
+      w.length=Math.max(WALL_HOLD_LENGTH,player.pos.distanceTo(w.point));
+    }
+  }
+
+  // アンカーから少し離れた位置へ逃がす
+  const away=player.pos.clone().sub(anchor);
+  if(away.length()>1){
+    away.normalize();
+    player.pos.copy(anchor).addScaledVector(away,WALL_HOLD_LENGTH);
+  }
+
+  player.vel.multiplyScalar(0.08);
+  anchorSettled=true;
+  return true;
+}
+
 function applyWire(w,dt){
   if(!w.hooked)return;
 
@@ -687,51 +750,49 @@ function applyWire(w,dt){
   const speed=player.vel.length();
 
   if(!input.reel){
-    // Aを押していない時:
-    // ワイヤーは「刺さっているだけ」。
-    // 位置補正もアンカー方向加速も行わない。
-    // 初期ワイヤー長は射出元補正済みなので、勝手に引っ張られにくい。
-    w.length=Math.max(w.length,dist+20);
+    // Aを押していない時はほぼ物理なし。
+    return;
+  }
 
-    // 極端に伸びた時だけ、暴走防止として外向き速度を軽く減らす。
-    if(dist>w.length+220){
-      const radial=player.vel.dot(n);
-      if(radial>0){
-        player.vel.addScaledVector(n,-radial*0.06);
-      }
-    }
+  // アンカー到達後はホールド扱い。
+  // それ以上巻き取らず、速度だけ吸収する。
+  if(anchorSettled){
+    w.length=Math.max(WALL_HOLD_LENGTH,w.length);
+    player.vel.multiplyScalar(0.86);
     return;
   }
 
   // Aを押している時だけ巻き取り。
-  const elasticAllowance=Math.min(75,speed*1.05);
-  const reelSpeed=24+Math.min(72,dist*.04);
-  w.length=Math.max(60,w.length-reelSpeed);
+  const elasticAllowance=Math.min(55,speed*0.75);
+  const reelSpeed=26+Math.min(78,dist*.045);
+  w.length=Math.max(WALL_HOLD_LENGTH,w.length-reelSpeed);
 
-  const effectiveLength=w.length+elasticAllowance*.18;
+  const effectiveLength=w.length+elasticAllowance*.12;
 
   if(dist>effectiveLength){
     const excess=dist-effectiveLength;
 
-    player.pos.addScaledVector(n,-excess*.76);
+    player.pos.addScaledVector(n,-excess*.70);
 
     const radial=player.vel.dot(n);
     if(radial>0){
-      player.vel.addScaledVector(n,-radial*.86);
+      player.vel.addScaledVector(n,-radial*.82);
     }
 
-    const tension=36+Math.min(86,excess*.32);
+    const tension=34+Math.min(72,excess*.28);
     player.vel.addScaledVector(n,-tension*dt*60);
 
     const tangent=player.vel.clone().addScaledVector(n,-player.vel.dot(n));
     const tLen=tangent.length();
     if(tLen>0.1){
-      player.vel.addScaledVector(tangent.normalize(),Math.min(1.25,tLen*.016));
+      player.vel.addScaledVector(tangent.normalize(),Math.min(1.05,tLen*.012));
     }
   }
 
-  // A中だけアンカー方向へ吸わせる
-  const pull=13+Math.min(42,dist*.02);
+  // A中だけアンカー方向へ吸わせる。
+  // ただし到達間際は弱めてブルブルを防ぐ。
+  const nearFactor=Math.min(1,Math.max(0,(dist-ANCHOR_SETTLE_DIST)/180));
+  const pull=(12+Math.min(36,dist*.018))*nearFactor;
   player.vel.addScaledVector(n,-pull*dt*60);
 }
 
@@ -924,7 +985,7 @@ function updateDebugHud(){
     `V ${fmtShort(player.vel)}<br>`+
     `C ${fmtShort(camera.position)}<br>`+
     `E ${fmtShort(externalCharacter?externalCharacter.position:null)}<br>`+
-    `W ${held?1:0} R ${input.reel?1:0} L ${lock}`;
+    `W ${held?1:0} R ${input.reel?1:0} L ${lock} S ${anchorSettled?1:0}`;
 }
 function updateUI(){const elapsed=clearTime??(performance.now()-startTime)/1000;timeText.textContent='T:'+elapsed.toFixed(2);heightText.textContent='H:'+Math.floor(player.pos.y);speedText.textContent='S:'+Math.floor(player.vel.length()*10);wireText.textContent='L:'+(player.wires.left.hooked?'ON':'OFF')+' / R:'+(player.wires.right.hooked?'ON':'OFF');stateText.textContent=(externalReady?'MODEL':'FALLBACK')+' / '+(player.grounded?'GROUND':'AIR')
 updateDebugHud();}
@@ -964,7 +1025,7 @@ function handleReelTakeoff(){
 
 function checkGoal(){if(cleared)return;const d=Math.hypot(player.pos.x-goalX,player.pos.z-goalZ);if(d<160&&player.pos.y<430){cleared=true;clearTime=(performance.now()-startTime)/1000;rankText.textContent='TIME '+clearTime.toFixed(2)+' / RANK '+getRank(clearTime);clearText.style.display='block'}}
 function animate(){const dt=Math.min(.033,clock.getDelta());if(input.release){player.wires.left.hooked=false;player.wires.right.hooked=false;reelWasDown=input.reel}
-  handleReelTakeoff();player.vel.y-=14*dt;applyWire(player.wires.left,dt);applyWire(player.wires.right,dt);const MAX_SPEED=95;
+  handleReelTakeoff();player.vel.y-=14*dt;applyWire(player.wires.left,dt);applyWire(player.wires.right,dt);settleAtAnchorIfNeeded();const MAX_SPEED=95;
   if(player.vel.length()>MAX_SPEED){
     player.vel.setLength(MAX_SPEED);
   }
