@@ -718,53 +718,56 @@ function applyWire(w,dt){
   const n = toPlayer.clone().normalize();
   const speed = player.vel.length();
 
-  // Aを押していない時は、ワイヤー物理を完全に切る
-  // 線は表示されるが、張力・吸引・ゴム感・位置補正は一切なし
-  if(!input.reel){
-    return;
+  // A中だけ巻き取り。Aを離してもワイヤー長は維持する。
+  if(input.reel){
+    const reelSpeed = 18 + Math.min(52, dist * 0.03);
+    w.length = Math.max(90, w.length - reelSpeed);
   }
 
-  // Aを押している時だけ巻き取り
-  const elasticAllowance = Math.min(55, speed * 0.75);
-  const reelSpeed = 26 + Math.min(78, dist * 0.045);
+  // ワイヤー長を超えた時だけ張力発生
+  const stretch = dist - w.length;
+  if(stretch <= 0)return;
 
-  w.length = Math.max(75, w.length - reelSpeed);
+  // 張力モデル
+  const STIFFNESS = 0.42;
+  const MAX_TENSION = 54;
 
-  const effectiveLength = w.length + elasticAllowance * 0.12;
+  let tension = stretch * STIFFNESS;
+  tension = Math.min(tension, MAX_TENSION);
 
-  if(dist > effectiveLength){
-    const excess = dist - effectiveLength;
-
-    // 位置補正：強すぎるとブルブルするので控えめ
-    player.pos.addScaledVector(n, -excess * 0.62);
-
-    // 外向き速度を吸収
-    const radial = player.vel.dot(n);
-    if(radial > 0){
-      player.vel.addScaledVector(n, -radial * 0.78);
-    }
-
-    // 巻き取り張力
-    const tension = 32 + Math.min(74, excess * 0.28);
-    player.vel.addScaledVector(n, -tension * dt * 60);
-
-    // 振り子感
-    const tangent = player.vel.clone().addScaledVector(n, -player.vel.dot(n));
-    const tLen = tangent.length();
-    if(tLen > 0.1){
-      player.vel.addScaledVector(
-        tangent.normalize(),
-        Math.min(1.05, tLen * 0.012)
-      );
-    }
+  // 外向き速度を吸収。完全停止ではなく少し残す。
+  const radial = player.vel.dot(n);
+  if(radial > 0){
+    const absorb = input.reel ? 0.82 : 0.58;
+    player.vel.addScaledVector(n, -radial * absorb);
   }
 
-  // A中だけアンカー方向へ軽く吸わせる
-  const pull = 12 + Math.min(38, dist * 0.02);
-  player.vel.addScaledVector(n, -pull * dt * 60);
+  // 張力でアンカー方向へ戻す
+  player.vel.addScaledVector(n, -tension * dt * 60);
+
+  // 伸びすぎた時だけ位置を少し戻して破綻防止
+  if(stretch > 80){
+    player.pos.addScaledVector(n, -Math.min(24, stretch * 0.18));
+  }
+
+  // A中だけ少し強めに吸う
+  if(input.reel){
+    const pull = 8 + Math.min(28, dist * 0.012);
+    player.vel.addScaledVector(n, -pull * dt * 60);
+  }
+
+  // 振り子感を少し残す
+  const tangent = player.vel.clone().addScaledVector(n, -player.vel.dot(n));
+  const tLen = tangent.length();
+  if(tLen > 0.1){
+    const boost = input.reel ? 0.010 : 0.004;
+    player.vel.addScaledVector(
+      tangent.normalize(),
+      Math.min(input.reel ? 0.85 : 0.35, tLen * boost)
+    );
+  }
 }
 // ==== WIRE_PHYSICS_APPLY END ====
-
 
 
 // ==== CAMERA_UPDATE START ====
