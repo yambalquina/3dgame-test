@@ -1068,8 +1068,17 @@ if(player.vel.y < MAX_FALL_SPEED){
   player.vel.y*=0.999;updateCamera(dt);updateAvatar();updateExternalCharacter(dt);updateWireLines();checkGoal();updateUI();renderer.render(scene,camera);requestAnimationFrame(animate)}
 // ==== MAIN_GAME_LOOP END ====
 
-function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize()setupDebugBox();
-;reset();
+function resize(){
+  renderer.setSize(innerWidth,innerHeight,false);
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+}
+
+addEventListener('resize',resize);
+resize();
+setupDebugBox();
+reset();
+;reset
 setTimeout(()=>{ if(loadStatus && !externalReady && !externalLoadFailed) loadStatus.textContent="3Dは起動済み。モデル読込中..."; }, 1200);
 animate();document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});document.addEventListener('contextmenu',e=>e.preventDefault(),{passive:false});
 </script>
