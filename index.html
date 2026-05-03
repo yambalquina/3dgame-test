@@ -711,60 +711,57 @@ function collide(){const radius=28;player.grounded=false;if(player.pos.y<60){pla
 function applyWire(w,dt){
   if(!w.hooked)return;
 
-  const toPlayer=player.pos.clone().sub(w.point);
-  const dist=toPlayer.length();
-  if(dist<1)return;
+  const toPlayer = player.pos.clone().sub(w.point);
+  const dist = toPlayer.length();
+  if(dist < 1)return;
 
-  const n=toPlayer.clone().normalize();
-  const speed=player.vel.length();
+  const n = toPlayer.clone().normalize();
+  const speed = player.vel.length();
 
+  // Aを押していない時は、ワイヤー物理を完全に切る
+  // 線は表示されるが、張力・吸引・ゴム感・位置補正は一切なし
   if(!input.reel){
-    // Aを押していない時:
-    // ワイヤーは「刺さっているだけ」。
-    // 位置補正もアンカー方向加速も行わない。
-    // 初期ワイヤー長は射出元補正済みなので、勝手に引っ張られにくい。
-    w.length=Math.max(w.length,dist+20);
-
-    // 極端に伸びた時だけ、暴走防止として外向き速度を軽く減らす。
-    if(dist>w.length+220){
-      const radial=player.vel.dot(n);
-      if(radial>0){
-        player.vel.addScaledVector(n,-radial*0.06);
-      }
-    }
     return;
   }
 
-  // Aを押している時だけ巻き取り。
-  const elasticAllowance=Math.min(75,speed*1.05);
-  const reelSpeed=24+Math.min(72,dist*.04);
-  w.length=Math.max(60,w.length-reelSpeed);
+  // Aを押している時だけ巻き取り
+  const elasticAllowance = Math.min(55, speed * 0.75);
+  const reelSpeed = 26 + Math.min(78, dist * 0.045);
 
-  const effectiveLength=w.length+elasticAllowance*.18;
+  w.length = Math.max(75, w.length - reelSpeed);
 
-  if(dist>effectiveLength){
-    const excess=dist-effectiveLength;
+  const effectiveLength = w.length + elasticAllowance * 0.12;
 
-    player.pos.addScaledVector(n,-excess*.76);
+  if(dist > effectiveLength){
+    const excess = dist - effectiveLength;
 
-    const radial=player.vel.dot(n);
-    if(radial>0){
-      player.vel.addScaledVector(n,-radial*.86);
+    // 位置補正：強すぎるとブルブルするので控えめ
+    player.pos.addScaledVector(n, -excess * 0.62);
+
+    // 外向き速度を吸収
+    const radial = player.vel.dot(n);
+    if(radial > 0){
+      player.vel.addScaledVector(n, -radial * 0.78);
     }
 
-    const tension=36+Math.min(86,excess*.32);
-    player.vel.addScaledVector(n,-tension*dt*60);
+    // 巻き取り張力
+    const tension = 32 + Math.min(74, excess * 0.28);
+    player.vel.addScaledVector(n, -tension * dt * 60);
 
-    const tangent=player.vel.clone().addScaledVector(n,-player.vel.dot(n));
-    const tLen=tangent.length();
-    if(tLen>0.1){
-      player.vel.addScaledVector(tangent.normalize(),Math.min(1.25,tLen*.016));
+    // 振り子感
+    const tangent = player.vel.clone().addScaledVector(n, -player.vel.dot(n));
+    const tLen = tangent.length();
+    if(tLen > 0.1){
+      player.vel.addScaledVector(
+        tangent.normalize(),
+        Math.min(1.05, tLen * 0.012)
+      );
     }
   }
 
-  // A中だけアンカー方向へ吸わせる
-  const pull=13+Math.min(42,dist*.02);
-  player.vel.addScaledVector(n,-pull*dt*60);
+  // A中だけアンカー方向へ軽く吸わせる
+  const pull = 12 + Math.min(38, dist * 0.02);
+  player.vel.addScaledVector(n, -pull * dt * 60);
 }
 // ==== WIRE_PHYSICS_APPLY END ====
 
