@@ -1016,7 +1016,19 @@ function checkGoal(){if(cleared)return;const d=Math.hypot(player.pos.x-goalX,pla
 
 // ==== MAIN_GAME_LOOP START ====
 function animate(){const dt=Math.min(.033,clock.getDelta());if(input.release){player.wires.left.hooked=false;player.wires.right.hooked=false;reelWasDown=input.reel}
-  handleReelTakeoff();player.vel.y-=14*dt;applyWire(player.wires.left,dt);applyWire(player.wires.right,dt);const MAX_SPEED=95;
+  handleReelTakeoff();// ==== GRAVITY_TUNING START ====
+// 自然な落下感のための重力・落下速度上限
+const GRAVITY = 0.72;          // 大きいほど落下が速い
+const MAX_FALL_SPEED = -46;    // 落下速度の上限
+
+player.vel.y -= GRAVITY * dt * 60;
+
+if(player.vel.y < MAX_FALL_SPEED){
+  player.vel.y = MAX_FALL_SPEED;
+}
+// ==== GRAVITY_TUNING END ====
+                   
+                   applyWire(player.wires.left,dt);applyWire(player.wires.right,dt);const MAX_SPEED=95;
   if(player.vel.length()>MAX_SPEED){
     player.vel.setLength(MAX_SPEED);
   }
