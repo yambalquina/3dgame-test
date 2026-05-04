@@ -992,16 +992,28 @@ function fmtShort(v){
   return `${v.x.toFixed(1)},${v.y.toFixed(1)},${v.z.toFixed(1)}`;
 }
 function updateDebugHud(){
-  const el=document.getElementById("debugHud");
-  if(!el)return;
-  const held=player.wires.left.hooked||player.wires.right.hooked;
-  const lock=(typeof braceLockActive!=="undefined")?braceLockActive:"NA";
-  el.innerHTML=
-    `P ${fmtShort(player.pos)}<br>`+
-    `V ${fmtShort(player.vel)}<br>`+
-    `C ${fmtShort(camera.position)}<br>`+
-    `E ${fmtShort(externalCharacter?externalCharacter.position:null)}<br>`+
-    `W ${held?1:0} R ${input.reel?1:0} L ${lock}`;
+  const hud = document.getElementById("debugHud");
+  const box = document.getElementById("debugContent");
+
+  const held = player.wires.left.hooked || player.wires.right.hooked;
+  const lock = (typeof braceLockActive !== "undefined") ? braceLockActive : "NA";
+
+  const text =
+    "P " + fmtShort(player.pos) + "\n" +
+    "V " + fmtShort(player.vel) + "\n" +
+    "C " + fmtShort(camera.position) + "\n" +
+    "E " + fmtShort(externalCharacter ? externalCharacter.position : null) + "\n" +
+    "W " + (held ? 1 : 0) +
+    " R " + (input.reel ? 1 : 0) +
+    " L " + lock;
+
+  if(hud){
+    hud.innerHTML = "DBG";
+  }
+
+  if(box){
+    box.textContent = text;
+  }
 }
 
 // ==== HUD_UPDATE START ====
