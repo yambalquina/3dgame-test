@@ -783,7 +783,7 @@ function applyWire(w,dt){
 
   // A中だけ少し強めに吸う
   if(input.reel){
-    const pull = 8 + Math.min(28, dist * 0.012);
+    const pull = 6 + Math.min(20, dist * 0.01);
     player.vel.addScaledVector(n, -pull * dt * 60);
   }
 
