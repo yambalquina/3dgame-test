@@ -171,6 +171,21 @@ function createBuilding(x,z,w,d,h,pal){
   hookTargets.push(body);
   group.add(body);
 
+const hookBox = new THREE.Mesh(
+  new THREE.BoxGeometry(w*1.12, h+50, d*1.12),
+  new THREE.MeshBasicMaterial({
+    color:0x00ff00,
+    transparent:true,
+    opacity:0.001,
+    depthWrite:false
+  })
+);
+
+hookBox.position.y = 15;
+hookBox.userData.isHookTarget = true;
+hookTargets.push(hookBox);
+group.add(hookBox);
+  
   const roof = new THREE.Mesh(new THREE.BoxGeometry(w*1.08,18,d*1.08), bRoofMat);
   roof.position.y = h/2 + 9;
   roof.castShadow = roof.receiveShadow = true;
