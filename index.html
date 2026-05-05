@@ -80,7 +80,33 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:no
 // HUD_UPDATE          : 右上HUD表示
 // ======================================================
 
+function holdNearAnchorOnWall(){
+  const points = [];
+  if(player.wires.left.hooked) points.push(player.wires.left.point);
+  if(player.wires.right.hooked) points.push(player.wires.right.point);
+  if(points.length === 0) return;
 
+  const anchor = new THREE.Vector3();
+  for(const p of points) anchor.add(p);
+  anchor.multiplyScalar(1 / points.length);
+
+  const away = player.pos.clone().sub(anchor);
+  if(away.length() < 1) return;
+
+  away.normalize();
+
+  const HOLD_DIST = 105;
+
+  // アンカーが上すぎる時に、キャラが空中に浮きすぎないようYを弱める
+  const target = anchor.clone().addScaledVector(away, HOLD_DIST);
+  target.y = THREE.MathUtils.lerp(player.pos.y, target.y, 0.35);
+
+  player.pos.copy(target);
+  player.vel.multiplyScalar(0.12);
+}
+  
+
+  
 window.addEventListener('error', (e)=>{
   const div=document.createElement('div');
   div.style.cssText='position:fixed;left:8px;bottom:8px;z-index:999999;background:rgba(0,0,0,.8);color:#ff8080;font:12px monospace;padding:8px;border-radius:8px;max-width:90vw;white-space:pre-wrap;';
@@ -751,7 +777,23 @@ function shootWire(side,sx,sy){
 document.getElementById('tapLayer').addEventListener('pointerdown',e=>{if(e.target.id!=='tapLayer')return;e.preventDefault();shootWire(e.clientX<innerWidth/2?'left':'right',e.clientX,e.clientY)},{passive:false});
 
 // ==== COLLISION START ====
-function collide(){const radius=28;player.grounded=false;if(player.pos.y<60){player.pos.y=60;if(player.vel.y<0)player.vel.y=0;player.grounded=true}for(const b of solids){if(player.pos.y>b.h+80)continue;const insideX=player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius,insideZ=player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius;if(insideX&&insideZ&&player.pos.y<b.h+70){const left=Math.abs(player.pos.x-(b.x-radius)),right=Math.abs(player.pos.x-(b.x+b.w+radius)),front=Math.abs(player.pos.z-(b.z-radius)),back=Math.abs(player.pos.z-(b.z+b.d+radius)),min=Math.min(left,right,front,back);if(min===left){player.pos.x=b.x-radius;player.vel.x*=.0}else if(min===right){player.pos.x=b.x+b.w+radius;player.vel.x*=.0}else if(min===front){player.pos.z=b.z-radius;player.vel.z*=.0}else{player.pos.z=b.z+b.d+radius;player.vel.z*=.0}}if(player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius&&player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius&&player.pos.y<b.h+60&&player.pos.y>b.h-30&&player.vel.y<=0){player.pos.y=b.h+60;player.vel.y=0;player.grounded=true}}}
+function collide(){const radius=28;player.grounded=false;if(player.pos.y<60){player.pos.y=60;if(player.vel.y<0)player.vel.y=0;player.grounded=true}for(const b of solids){if(player.pos.y>b.h+80)continue;const insideX=player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius,insideZ=player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius;if(insideX&&insideZ&&player.pos.y<b.h+70){const left=Math.abs(player.pos.x-(b.x-radius)),right=Math.abs(player.pos.x-(b.x+b.w+radius)),front=Math.abs(player.pos.z-(b.z-radius)),back=Math.abs(player.pos.z-(b.z+b.d+radius)),min=Math.min(left,right,front,back);if(min===left){
+  player.pos.x=b.x-radius;
+  player.vel.x=0;
+  holdNearAnchorOnWall();
+}else if(min===right){
+  player.pos.x=b.x+b.w+radius;
+  player.vel.x=0;
+  holdNearAnchorOnWall();
+}else if(min===front){
+  player.pos.z=b.z-radius;
+  player.vel.z=0;
+  holdNearAnchorOnWall();
+}else{
+  player.pos.z=b.z+b.d+radius;
+  player.vel.z=0;
+  holdNearAnchorOnWall();
+}}if(player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius&&player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius&&player.pos.y<b.h+60&&player.pos.y>b.h-30&&player.vel.y<=0){player.pos.y=b.h+60;player.vel.y=0;player.grounded=true}}}
 // ==== COLLISION END ====
 
 
