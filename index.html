@@ -1,80 +1,1165 @@
+<!-- REFAC_SEARCH_MARKERS: behavior unchanged, searchable markers added -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>3D Maneuver Gear - Pro</title>
-    <style>
-        body { margin: 0; overflow: hidden; background: #8DB2D6; font-family: sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
-        #canvas-container { position: fixed; inset: 0; width: 100vw; height: 100vh; }
-        
-        /* 画面中央の照準 */
-        .crosshair { position: fixed; left: 50%; top: 50%; width: 30px; height: 30px; transform: translate(-50%, -50%); z-index: 10; pointer-events: none; color: black; font-size: 30px; font-weight: 100; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>立体機動装置 Prototype 3D 軽リファクター版</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none}
+#game{position:fixed;inset:0;width:100vw;height:100vh;display:block;background:#000}
+#tapLayer{position:fixed;inset:0;z-index:5;background:transparent;touch-action:none}.hud{position:fixed;top:14px;right:14px;z-index:20;background:rgba(0,0,0,.42);color:#fff;border-radius:12px;padding:9px 11px;font-size:12px;line-height:1.55;text-align:right;backdrop-filter:blur(5px);min-width:120px}.system{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:25;display:flex;gap:8px}.system button,.mode button{border:none;background:rgba(255,255,255,.82);border-radius:12px;padding:8px 11px;font-weight:700;font-size:13px;box-shadow:0 8px 18px rgba(0,0,0,.16)}.mode{position:fixed;top:14px;left:14px;z-index:25}.ui{position:fixed;left:8vw;right:8vw;bottom:34px;z-index:20;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none}.ui>*{pointer-events:auto}.dpad{display:grid;grid-template-columns:58px 58px 58px;grid-template-rows:58px 58px 58px;gap:8px}.btn{border:none;background:rgba(255,255,255,.70);color:#111;border-radius:16px;font-weight:800;font-size:22px;box-shadow:0 8px 18px rgba(0,0,0,.14);touch-action:none}.btn:active{transform:scale(.97)}.actionArea{display:flex;flex-direction:column;gap:10px}.action{width:78px;height:78px;border-radius:50%}.crosshair{position:fixed;left:50%;top:50%;width:24px;height:24px;margin-left:-12px;margin-top:-12px;z-index:18;pointer-events:none}.crosshair::before,.crosshair::after{content:"";position:absolute;background:rgba(0,0,0,.85);border-radius:2px}.crosshair::before{width:24px;height:2px;top:11px;left:0}.crosshair::after{width:2px;height:24px;left:11px;top:0}.clear{position:fixed;left:50%;top:48%;transform:translate(-50%,-50%);z-index:40;color:#fff;font-size:48px;font-weight:900;text-shadow:0 0 20px rgba(0,0,0,.7);display:none;text-align:center}.notice{position:fixed;left:50%;bottom:132px;transform:translateX(-50%);z-index:19;background:rgba(0,0,0,.36);color:#fff;border-radius:999px;padding:7px 12px;font-size:11px;backdrop-filter:blur(5px)}body.auto .dpad{display:none}body.auto .ui{justify-content:flex-end}
 
-        /* 上部ボタン */
-        .top-ui { position: fixed; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; z-index: 20; pointer-events: none; }
-        .system-btns { display: flex; gap: 10px; pointer-events: auto; }
-        .btn-small { background: rgba(255,255,255,0.9); border: none; border-radius: 8px; padding: 8px 12px; font-weight: bold; color: #3498db; font-size: 12px; }
+#loadStatus{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  z-index:100;
+  background:rgba(0,0,0,.65);
+  color:#fff;
+  padding:12px 16px;
+  border-radius:12px;
+  font-size:13px;
+  line-height:1.5;
+  text-align:center;
+  pointer-events:none;
+}
 
-        /* ステータスパネル */
-        .status-panel { background: rgba(0,0,0,0.5); color: white; padding: 10px; border-radius: 10px; font-size: 12px; line-height: 1.4; text-align: right; pointer-events: none; }
+.notice{display:none!important;}
 
-        /* 操作UI */
-        .controls { position: fixed; left: 5vw; right: 5vw; bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end; z-index: 20; pointer-events: none; }
-        .dpad { display: grid; grid-template-columns: repeat(3, 55px); grid-template-rows: repeat(3, 55px); gap: 5px; pointer-events: auto; }
-        .action-btns { display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
-        
-        .btn { background: rgba(255,255,255,0.7); border: none; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: #333; box-shadow: 0 4px #ccc; }
-        .btn:active { transform: translateY(2px); box-shadow: 0 2px #999; }
-        .btn-circle { width: 75px; height: 75px; border-radius: 50%; font-size: 28px; }
+.notice{
+  display:none !important;
+  opacity:0 !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
 
-        /* 底部デバッグ */
-        .debug-bar { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: 90%; background: rgba(0,0,0,0.8); color: #0f0; padding: 5px 10px; font-size: 10px; border-radius: 5px; display: flex; justify-content: space-between; z-index: 25; }
 
-        #loading { position: fixed; inset: 0; background: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-    </style>
+.notice{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;}
+</style>
 </head>
 <body>
-    <div id="loading"><div>LOADING 3D ASSETS...</div><div id="error-log"></div></div>
-    <div id="canvas-container"></div>
-    <div class="crosshair">＋</div>
+<div id="debugBox" style="position:fixed;left:8px;bottom:8px;z-index:99999;background:rgba(0,0,0,.75);color:#7CFF7C;font:11px monospace;padding:8px;border-radius:8px;max-width:92vw;line-height:1.4;white-space:pre;">
+  <button id="debugClose" style="float:right;margin-left:8px;">×</button>
+  <div id="debugContent">DEBUG READY</div>
+</div>
 
-    <div class="top-ui">
-        <div class="system-btns">
-            <button class="btn-small" onclick="location.reload()">RESET</button>
-            <button class="btn-small">MANUAL</button>
-        </div>
-        <div class="status-panel" id="hud">
-            T: 0.00<br>H: 0<br>S: 0<br>WIRE: OFF
-        </div>
-    </div>
+<button id="debugOpen" style="position:fixed;left:8px;bottom:8px;z-index:99998;display:none;">
+  DEBUG
+</button> 
+<canvas id="game"></canvas>
+<div id="loadStatus">3D読み込み中...</div><div id="tapLayer"></div>
+<div class="mode"><button id="modeBtn">MANUAL</button></div><div class="system"><button id="resetBtn">リセット</button><button id="respawnBtn">リスポーン</button></div>
+<div class="hud"><div id="timeText">T:0.00</div><div id="heightText">H:0</div><div id="speedText">S:0</div><div id="wireText">L:OFF / R:OFF</div><div id="stateText">GROUND</div><div id="debugHud" style="margin-top:6px;font-size:10px;line-height:1.25;text-align:left;color:#7CFF7C;font-family:monospace;white-space:pre;"></div></div>
+<div class="crosshair"></div><div id="clearText" class="clear">CLEAR!!<br><span id="rankText" style="font-size:28px"></span></div>
+<div class="ui"><div class="dpad"><div></div><button class="btn" id="up">↑</button><div></div><button class="btn" id="left">←</button><div></div><button class="btn" id="right">→</button><div></div><button class="btn" id="down">↓</button><div></div></div><div class="actionArea"><button class="btn action" id="reel">A</button><button class="btn action" id="release">B</button></div></div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
 
-    <div class="controls">
-        <div class="dpad">
-            <div style="grid-column:2"><button class="btn" style="width:55px;height:55px;" id="up">↑</button></div>
-            <div style="grid-column:1; grid-row:2"><button class="btn" style="width:55px;height:55px;" id="left">←</button></div>
-            <div style="grid-column:3; grid-row:2"><button class="btn" style="width:55px;height:55px;" id="right">→</button></div>
-            <div style="grid-column:2; grid-row:3"><button class="btn" style="width:55px;height:55px;" id="down">↓</button></div>
-        </div>
-        <div class="action-btns">
-            <button class="btn btn-circle" id="btn-a">A</button>
-            <button class="btn btn-circle" id="btn-b">B</button>
-        </div>
-    </div>
+// ======================================================
+// SEARCH_INDEX_FOR_IPHONE
+// iPhone/GitHubで探す用の検索ワード一覧
+//
+// WIRE_SHOOT          : ワイヤー射出判定
+// WIRE_ORIGIN_WAIST   : 腰からワイヤーを出す位置
+// WIRE_PHYSICS_APPLY  : ワイヤー物理・巻き取り
+// WIRE_VISUAL_LINES   : ワイヤー線の描画
+// GLB_CHARACTER_SYNC  : peoplemodel.glb の位置・向き同期
+// MAIN_GAME_LOOP      : 毎フレーム更新
+// CAMERA_UPDATE       : カメラ追従
+// COLLISION           : 地面・建物との衝突
+// HUD_UPDATE          : 右上HUD表示
+// ======================================================
 
-    <div class="debug-bar">
-        <span id="debug-text">POS: 0, 0, 0 | VEL: 0</span>
-        <span>×</span>
-    </div>
+function holdNearAnchorOnWall(){
+  const points = [];
+  if(player.wires.left.hooked) points.push(player.wires.left.point);
+  if(player.wires.right.hooked) points.push(player.wires.right.point);
+  if(points.length === 0) return;
 
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-        }
+  const anchor = new THREE.Vector3();
+  for(const p of points) anchor.add(p);
+  anchor.multiplyScalar(1 / points.length);
+
+  const away = player.pos.clone().sub(anchor);
+  if(away.length() < 1) return;
+
+  away.normalize();
+
+  const HOLD_DIST = 105;
+
+  // アンカーが上すぎる時に、キャラが空中に浮きすぎないようYを弱める
+  const target = anchor.clone().addScaledVector(away, HOLD_DIST);
+  target.y = THREE.MathUtils.lerp(player.pos.y, target.y, 0.35);
+
+  player.pos.copy(target);
+  player.vel.multiplyScalar(0.12);
+}
+  
+
+  
+window.addEventListener('error', (e)=>{
+  const div=document.createElement('div');
+  div.style.cssText='position:fixed;left:8px;bottom:8px;z-index:999999;background:rgba(0,0,0,.8);color:#ff8080;font:12px monospace;padding:8px;border-radius:8px;max-width:90vw;white-space:pre-wrap;';
+  div.textContent='JS ERROR: '+e.message+' @ '+e.filename+':'+e.lineno;
+  document.body.appendChild(div);
+});
+
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+const canvas=document.getElementById('game');const loadStatus=document.getElementById('loadStatus');const renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x8ed0ff);scene.fog=new THREE.Fog(0xbfe6ff,1200,4800);const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,9000);const clock=new THREE.Clock();
+scene.add(new THREE.HemisphereLight(0xffffff,0x6b7a55,1.2));const sun=new THREE.DirectionalLight(0xffffff,1.6);sun.position.set(900,1600,700);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.near=50;sun.shadow.camera.far=5000;sun.shadow.camera.left=-2200;sun.shadow.camera.right=2200;sun.shadow.camera.top=2200;sun.shadow.camera.bottom=-2200;scene.add(sun);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(12000,12000),new THREE.MeshStandardMaterial({color:0x74a85d,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+// ---- City grid: wider roads + buildings inside road blocks ----
+const roadMat = new THREE.MeshStandardMaterial({color:0x8f8778, roughness:.95});
+const sidewalkMat = new THREE.MeshStandardMaterial({color:0xb7b0a2, roughness:.9});
+
+// 道幅を従来の約2倍へ
+const ROAD_W = 180;
+const SIDEWALK_W = 34;
+const BLOCK = 760;
+const CITY_RANGE = 5;
+
+// Roads: grid lines
+for(let i=-CITY_RANGE;i<=CITY_RANGE;i++){
+  const z = i * BLOCK;
+  const x = i * BLOCK;
+
+  const roadX = new THREE.Mesh(new THREE.BoxGeometry(12000,2,ROAD_W), roadMat);
+  roadX.position.set(0,1,z);
+  roadX.receiveShadow = true;
+  scene.add(roadX);
+
+  const roadZ = new THREE.Mesh(new THREE.BoxGeometry(ROAD_W,2,12000), roadMat);
+  roadZ.position.set(x,1,0);
+  roadZ.receiveShadow = true;
+  scene.add(roadZ);
+
+  const s1 = new THREE.Mesh(new THREE.BoxGeometry(12000,3,SIDEWALK_W), sidewalkMat);
+  s1.position.set(0,2.5,z + ROAD_W/2 + SIDEWALK_W/2);
+  s1.receiveShadow = true;
+  scene.add(s1);
+
+  const s2 = s1.clone();
+  s2.position.z = z - ROAD_W/2 - SIDEWALK_W/2;
+  scene.add(s2);
+
+  const s3 = new THREE.Mesh(new THREE.BoxGeometry(SIDEWALK_W,3,12000), sidewalkMat);
+  s3.position.set(x + ROAD_W/2 + SIDEWALK_W/2,2.5,0);
+  s3.receiveShadow = true;
+  scene.add(s3);
+
+  const s4 = s3.clone();
+  s4.position.x = x - ROAD_W/2 - SIDEWALK_W/2;
+  scene.add(s4);
+}
+
+const buildings = [];
+const solids = [];
+const hookTargets = [];
+
+const palettes = [
+  {wall:0xb56d58, roof:0x6f3028, trim:0x7d463a},
+  {wall:0xd5b58e, roof:0x8b4337, trim:0x725039},
+  {wall:0xc7b6a4, roof:0x62584f, trim:0x86766a},
+  {wall:0xdcc9aa, roof:0x5f332b, trim:0x61432f}
+];
+
+function addBox(mesh){
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  return mesh;
+}
+
+function createBuilding(x,z,w,d,h,pal){
+  const group = new THREE.Group();
+  group.position.set(x,h/2,z);
+
+  const bWallMat = new THREE.MeshStandardMaterial({color:pal.wall, roughness:.85});
+  const bRoofMat = new THREE.MeshStandardMaterial({color:pal.roof, roughness:.8});
+  const bTrimMat = new THREE.MeshStandardMaterial({color:pal.trim, roughness:.9});
+  const winMat = new THREE.MeshStandardMaterial({color:0xdcecf8, roughness:.25, metalness:.05});
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), bWallMat);
+  body.castShadow = body.receiveShadow = true;
+  body.userData.isHookTarget = true;
+  hookTargets.push(body);
+  group.add(body);
+
+const hookBox = new THREE.Mesh(
+  new THREE.BoxGeometry(w*1.12, h+50, d*1.12),
+  new THREE.MeshBasicMaterial({
+    color:0x00ff00,
+    transparent:true,
+    opacity:0.001,
+    depthWrite:false
+  })
+);
+
+hookBox.position.y = 15;
+hookBox.userData.isHookTarget = true;
+hookTargets.push(hookBox);
+group.add(hookBox);
+  
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(w*1.08,18,d*1.08), bRoofMat);
+  roof.position.y = h/2 + 9;
+  roof.castShadow = roof.receiveShadow = true;
+ roof.userData.isHookTarget = true;
+hookTargets.push(roof);
+  group.add(roof);
+
+  for(let y=-h/2+70; y<h/2-20; y+=90){
+    const band = new THREE.Mesh(new THREE.BoxGeometry(w*1.03,6,d*1.04), bTrimMat);
+    band.position.y = y;
+    group.add(band);
+  }
+
+  const rows = Math.max(1, Math.floor(h/90));
+  const colsF = Math.max(1, Math.floor(w/55));
+  const colsS = Math.max(1, Math.floor(d/55));
+  const winW = 18;
+  const winH = 30;
+
+  for(let r=0;r<rows;r++){
+    const yy = -h/2 + 55 + r*80;
+
+    for(let c=0;c<colsF;c++){
+      const xx = -w/2 + (c+1)*w/(colsF+1);
+      const front = new THREE.Mesh(new THREE.BoxGeometry(winW,winH,3), winMat);
+      front.position.set(xx,yy,d/2+2);
+      group.add(front);
+
+      const back = front.clone();
+      back.position.z = -d/2-2;
+      group.add(back);
     }
-    </script>
-    <script type="module" src="main.js"></script>
+
+    for(let c=0;c<colsS;c++){
+      const zz = -d/2 + (c+1)*d/(colsS+1);
+      const right = new THREE.Mesh(new THREE.BoxGeometry(3,winH,winW), winMat);
+      right.position.set(w/2+2,yy,zz);
+      group.add(right);
+
+      const left = right.clone();
+      left.position.x = -w/2-2;
+      group.add(left);
+    }
+  }
+
+  scene.add(group);
+  buildings.push(group);
+  solids.push({x:x-w/2, z:z-d/2, w, d, h});
+}
+
+// 建物は道路上ではなく、道路と道路で囲まれた街区内だけに置く
+function addCityBlock(blockX, blockZ){
+  const cx = (blockX + 0.5) * BLOCK;
+  const cz = (blockZ + 0.5) * BLOCK;
+
+  // スタート地点付近は空ける
+  if(Math.abs(cx) < 520 && Math.abs(cz) < 520) return;
+
+  const inner = BLOCK - ROAD_W - SIDEWALK_W*2;
+  const margin = 60;
+  const usable = inner - margin*2;
+
+  const layout = Math.random();
+  const palBase = palettes[Math.floor(Math.random()*palettes.length)];
+
+  if(layout < 0.45){
+    const w = 230 + Math.random()*130;
+    const d = 230 + Math.random()*130;
+    const h = 240 + Math.random()*430;
+    createBuilding(cx, cz, Math.min(w, usable*.82), Math.min(d, usable*.82), h, palBase);
+  }else if(layout < 0.78){
+    const alongX = Math.random() < 0.5;
+    for(let n=0;n<2;n++){
+      const offset = (n===0 ? -1 : 1) * usable * 0.23;
+      const x = cx + (alongX ? offset : 0);
+      const z = cz + (alongX ? 0 : offset);
+      const w = alongX ? usable*.34 : usable*.58;
+      const d = alongX ? usable*.58 : usable*.34;
+      const h = 220 + Math.random()*390;
+      createBuilding(x,z,w,d,h,palettes[Math.floor(Math.random()*palettes.length)]);
+    }
+  }else{
+    for(const sx of [-1,1]){
+      for(const sz of [-1,1]){
+        const x = cx + sx * usable*.22;
+        const z = cz + sz * usable*.22;
+        const w = usable*.28;
+        const d = usable*.28;
+        const h = 180 + Math.random()*310;
+        createBuilding(x,z,w,d,h,palettes[Math.floor(Math.random()*palettes.length)]);
+      }
+    }
+  }
+}
+
+for(let bx=-CITY_RANGE; bx<CITY_RANGE; bx++){
+  for(let bz=-CITY_RANGE; bz<CITY_RANGE; bz++){
+    if(Math.random() < 0.08) continue;
+    addCityBlock(bx,bz);
+  }
+}
+
+const wallMat=new THREE.MeshStandardMaterial({color:0xbdb7ad,roughness:.9});const wallRadius=4700;for(let i=0;i<96;i++){const a=i/96*Math.PI*2,x=Math.sin(a)*wallRadius,z=Math.cos(a)*wallRadius;const wall=new THREE.Mesh(new THREE.BoxGeometry(230,820,120),wallMat);wall.position.set(x,410,z);wall.rotation.y=a;wall.castShadow=wall.receiveShadow=true;scene.add(wall);solids.push({x:x-115,z:z-60,w:230,d:120,h:820})}
+const goalX=3100,goalZ=3250;const goal=new THREE.Group(),gateMat=new THREE.MeshStandardMaterial({color:0x35ff4a,emissive:0x0a4a0a,roughness:.4});const p1=new THREE.Mesh(new THREE.BoxGeometry(35,360,35),gateMat);p1.position.set(-100,180,0);const p2=p1.clone();p2.position.x=100;const top=new THREE.Mesh(new THREE.BoxGeometry(235,35,35),gateMat);top.position.set(0,360,0);goal.add(p1,p2,top);goal.position.set(goalX,0,goalZ);scene.add(goal);
+const playerGroup=new THREE.Group();scene.add(playerGroup);
+
+// Humanoid v3:
+// - レスリングの構えを参考にした前傾姿勢
+// - 高腰
+// - 八頭身寄り
+// - 脚長は全身の約45%
+// - 肩位置は頭頂から約15%付近で、やや高め
+const skinMat=new THREE.MeshStandardMaterial({color:0xd1ad90,roughness:.78});
+const hairMat=new THREE.MeshStandardMaterial({color:0x17120f,roughness:.9});
+const jacketMat=new THREE.MeshStandardMaterial({color:0x303943,roughness:.86});
+const shirtMat=new THREE.MeshStandardMaterial({color:0xd6d7d2,roughness:.9});
+const pantsMat=new THREE.MeshStandardMaterial({color:0x33455d,roughness:.88});
+const bootMat=new THREE.MeshStandardMaterial({color:0x1d1d1f,roughness:.9});
+const gearMat=new THREE.MeshStandardMaterial({color:0x4c4942,roughness:.78,metalness:.12});
+const cableMat=new THREE.MeshStandardMaterial({color:0x151515,roughness:.7});
+
+function makeCapsule(radius,length,mat){
+  const mesh=new THREE.Mesh(new THREE.CapsuleGeometry(radius,length,8,14),mat);
+  mesh.castShadow=true;mesh.receiveShadow=true;return mesh;
+}
+function makeBox(w,h,d,mat){
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  mesh.castShadow=true;mesh.receiveShadow=true;return mesh;
+}
+function makeSphere(r,mat){
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,18,14),mat);
+  mesh.castShadow=true;mesh.receiveShadow=true;return mesh;
+}
+
+// 全身基準:
+// 足裏 -78 / 頭頂 約118 → 身長約196
+// 脚: 股関節 -3 から足裏 -78 = 約75、さらに骨盤周辺込みで約88〜90 → 約45%
+const rig={
+  root:playerGroup,
+  pelvis:new THREE.Group(),
+  spine:new THREE.Group(),
+  chest:new THREE.Group(),
+  neck:new THREE.Group(),
+  head:new THREE.Group(),
+  lShoulder:new THREE.Group(),rShoulder:new THREE.Group(),
+  lElbow:new THREE.Group(),rElbow:new THREE.Group(),
+  lWrist:new THREE.Group(),rWrist:new THREE.Group(),
+  lHip:new THREE.Group(),rHip:new THREE.Group(),
+  lKnee:new THREE.Group(),rKnee:new THREE.Group(),
+  lAnkle:new THREE.Group(),rAnkle:new THREE.Group()
+};
+
+playerGroup.add(rig.pelvis);
+rig.pelvis.add(rig.spine,rig.lHip,rig.rHip);
+rig.spine.add(rig.chest);
+rig.chest.add(rig.neck,rig.lShoulder,rig.rShoulder);
+rig.neck.add(rig.head);
+
+const parts={};
+
+// 高腰: 骨盤を高め、胴はやや短く締める
+parts.pelvis=makeBox(38,18,24,gearMat);parts.pelvis.position.set(0,0,0);rig.pelvis.add(parts.pelvis);
+parts.abdomen=makeBox(31,30,22,shirtMat);parts.abdomen.position.set(0,23,0);rig.spine.add(parts.abdomen);
+parts.chest=makeBox(49,44,27,jacketMat);parts.chest.position.set(0,55,0);rig.chest.add(parts.chest);
+
+// 肩位置: 頭頂から約15%付近を意識して高め
+rig.lShoulder.position.set(-31,82,0);
+rig.rShoulder.position.set(31,82,0);
+
+parts.neck=makeCapsule(5,9,skinMat);parts.neck.position.set(0,88,0);rig.neck.add(parts.neck);
+parts.head=makeSphere(17,skinMat);parts.head.scale.set(.88,1.08,.92);parts.head.position.set(0,107,0);rig.head.add(parts.head);
+
+parts.hairCap=makeSphere(18.6,hairMat);
+parts.hairCap.scale.set(1.04,.72,1.05);
+parts.hairCap.position.set(0,112,0);
+rig.head.add(parts.hairCap);
+
+// 頭皮隠し用: 前後左右に髪の面を足して、球の潰しで禿げて見えるのを防ぐ
+parts.frontHair=makeBox(30,14,10,hairMat);
+parts.frontHair.position.set(0,106,12);
+parts.frontHair.rotation.x=-.15;
+rig.head.add(parts.frontHair);
+
+parts.sideHairL=makeBox(8,18,10,hairMat);
+parts.sideHairL.position.set(-15,104,3);
+parts.sideHairL.rotation.z=.18;
+rig.head.add(parts.sideHairL);
+
+parts.sideHairR=makeBox(8,18,10,hairMat);
+parts.sideHairR.position.set(15,104,3);
+parts.sideHairR.rotation.z=-.18;
+rig.head.add(parts.sideHairR);
+
+parts.backHair=makeBox(30,18,10,hairMat);
+parts.backHair.position.set(0,104,-13);
+parts.backHair.rotation.x=.10;
+rig.head.add(parts.backHair);
+
+
+
+// hips high and compact
+rig.spine.position.set(0,0,0);
+rig.chest.position.set(0,0,0);
+rig.neck.position.set(0,0,0);
+rig.lHip.position.set(-15,-4,0);
+rig.rHip.position.set(15,-4,0);
+
+// arms: 肘が自然に曲がるレスリング構え用に少し長め
+parts.lUpperArm=makeCapsule(5.3,34,jacketMat);parts.rUpperArm=makeCapsule(5.3,34,jacketMat);
+parts.lLowerArm=makeCapsule(4.7,32,shirtMat);parts.rLowerArm=makeCapsule(4.7,32,shirtMat);
+parts.lHand=makeSphere(5.8,skinMat);parts.rHand=makeSphere(5.8,skinMat);
+
+rig.lShoulder.add(parts.lUpperArm,rig.lElbow);
+rig.rShoulder.add(parts.rUpperArm,rig.rElbow);
+parts.lUpperArm.position.set(0,-18,0);
+parts.rUpperArm.position.set(0,-18,0);
+rig.lElbow.position.set(0,-40,0);
+rig.rElbow.position.set(0,-40,0);
+rig.lElbow.add(parts.lLowerArm,rig.lWrist);
+rig.rElbow.add(parts.rLowerArm,rig.rWrist);
+parts.lLowerArm.position.set(0,-17,0);
+parts.rLowerArm.position.set(0,-17,0);
+rig.lWrist.position.set(0,-37,0);
+rig.rWrist.position.set(0,-37,0);
+rig.lWrist.add(parts.lHand);
+rig.rWrist.add(parts.rHand);
+
+// legs: 全身比で約45%。太もも/すねをやや長め、高腰を維持
+parts.lThigh=makeCapsule(7.2,42,pantsMat);parts.rThigh=makeCapsule(7.2,42,pantsMat);
+parts.lShin=makeCapsule(6.3,42,pantsMat);parts.rShin=makeCapsule(6.3,42,pantsMat);
+parts.lBoot=makeBox(13,8,28,bootMat);parts.rBoot=makeBox(13,8,28,bootMat);
+
+rig.lHip.add(parts.lThigh,rig.lKnee);
+rig.rHip.add(parts.rThigh,rig.rKnee);
+parts.lThigh.position.set(0,-23,0);
+parts.rThigh.position.set(0,-23,0);
+rig.lKnee.position.set(0,-48,0);
+rig.rKnee.position.set(0,-48,0);
+rig.lKnee.add(parts.lShin,rig.lAnkle);
+rig.rKnee.add(parts.rShin,rig.rAnkle);
+parts.lShin.position.set(0,-23,0);
+parts.rShin.position.set(0,-23,0);
+rig.lAnkle.position.set(0,-48,0);
+rig.rAnkle.position.set(0,-48,0);
+rig.lAnkle.add(parts.lBoot);
+rig.rAnkle.add(parts.rBoot);
+parts.lBoot.position.set(0,-2,8);
+parts.rBoot.position.set(0,-2,8);
+
+// gear
+parts.lGear=makeBox(16,14,22,gearMat);parts.rGear=makeBox(16,14,22,gearMat);
+parts.lGear.position.set(-30,4,0);parts.rGear.position.set(30,4,0);rig.pelvis.add(parts.lGear,parts.rGear);
+parts.backUnit=makeBox(30,26,12,gearMat);parts.backUnit.position.set(0,49,-18);rig.chest.add(parts.backUnit);
+parts.lBlade=makeBox(4,38,4,cableMat);parts.rBlade=makeBox(4,38,4,cableMat);
+parts.lBlade.position.set(-39,1,15);parts.rBlade.position.set(39,1,15);
+parts.lBlade.rotation.z=.18;parts.rBlade.rotation.z=-.18;rig.pelvis.add(parts.lBlade,parts.rBlade);
+
+const limbs=parts,torso=parts.chest;
+
+// Default is no longer upright.
+// レスリング構え: 股関節から前傾、胸は丸めすぎず、膝は軽く曲げ、腕は前方で構える
+const avatarAnim={
+  spineX:.18,chestX:.24,chestZ:0,pelvisZ:0,headX:-.10,
+  lArmX:.70,rArmX:.70,lArmZ:-.32,rArmZ:.32,
+  lElbowX:-.28,rElbowX:-.28,lWristX:.06,rWristX:.06,
+  lLegX:-.18,rLegX:-.18,lLegZ:.12,rLegZ:-.12,
+  lKneeX:.46,rKneeX:.46,lAnkleX:-.10,rAnkleX:-.10
+};
+function lerpAvatar(a,b,t){return a+(b-a)*t}
+function smoothAvatar(target,rate=.16){for(const k in target){avatarAnim[k]=lerpAvatar(avatarAnim[k]??0,target[k],rate)}}
+
+const leftLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x111111,linewidth:2}));
+const rightLine=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0x111111,linewidth:2}));
+scene.add(leftLine,rightLine);
+
+// ---- External GLB character ----
+// index.html と同じ階層に peoplemodel.glb を置く。
+let externalCharacter = null;
+let externalMixer = null;
+let externalReady = false;
+let externalLoadFailed = false;
+const MODEL_EXTRA_SCALE = 1.0;
+
+// GLBモデルの向き補正。
+// 現状、頭が下・脚が上に見えているためX軸180度で上下を反転する。
+const MODEL_ROT_X = 0;
+const MODEL_ROT_Y = Math.PI;
+const MODEL_ROT_Z = 0;
+
+playerGroup.visible = true;
+
+const gltfLoader = new GLTFLoader();
+gltfLoader.load(
+  "peoplemodel.glb",
+  (gltf) => {
+    // GLBは原点・サイズがバラバラなので、必ずラッパーで正規化する
+    const rawModel = gltf.scene;
+    rawModel.traverse((obj) => {
+      if(obj.isMesh){
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+        obj.userData.isPlayerModel = true;
+        obj.frustumCulled = false;
+      }
+    });
+
+    externalCharacter = new THREE.Group();
+    scene.add(externalCharacter);
+    externalCharacter.add(rawModel);
+
+    // まず向き補正をかける
+    rawModel.rotation.set(MODEL_ROT_X, MODEL_ROT_Y, MODEL_ROT_Z);
+    rawModel.updateMatrixWorld(true);
+
+    // 向き補正後の境界で、サイズ・中心・足元を正規化する
+    let box = new THREE.Box3().setFromObject(rawModel);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+
+    const targetHeight = 100;
+    const modelHeight = Math.max(size.y, 0.0001);
+    const scale = targetHeight / modelHeight;
+
+    rawModel.scale.setScalar(scale);
+    rawModel.updateMatrixWorld(true);
+
+    // スケール後にもう一度境界を測る
+    box = new THREE.Box3().setFromObject(rawModel);
+    const center2 = new THREE.Vector3();
+    box.getCenter(center2);
+
+    // X/Z中心をプレイヤー中心へ、最下点を足元へ合わせる
+    rawModel.position.x -= center2.x;
+    rawModel.position.z -= center2.z;
+    rawModel.position.y -= box.min.y;
+
+    rawModel.updateMatrixWorld(true);
+
+    // ラッパーの追加縮小は使わない
+    externalCharacter.scale.setScalar(1.0);
+
+    if(gltf.animations && gltf.animations.length > 0){
+      externalMixer = new THREE.AnimationMixer(rawModel);
+      const action = externalMixer.clipAction(gltf.animations[0]);
+      action.reset();
+      action.setLoop(THREE.LoopRepeat);
+      action.play();
+    }
+
+    // Idleアニメ優先: ロード時ポーズ補正なし
+
+    externalReady = true;
+    playerGroup.visible = false;
+    if(typeof loadStatus !== 'undefined' && loadStatus) loadStatus.style.display = "none";
+  },
+  undefined,
+  (err) => {
+    console.warn("peoplemodel.glb load failed:", err);
+    externalLoadFailed = true;
+    playerGroup.visible = true;
+    if(typeof loadStatus !== 'undefined' && loadStatus) loadStatus.textContent = "peoplemodel.glbを読み込めませんでした。\nファイル名と配置を確認してください。";
+  }
+);
+
+
+function findBoneByKeywords(root, keywords){
+  let found = null;
+  const lower = keywords.map(k => k.toLowerCase());
+  root.traverse((obj) => {
+    if(found || !obj.isBone) return;
+    const name = (obj.name || "").toLowerCase();
+    if(lower.some(k => name.includes(k))){
+      found = obj;
+    }
+  });
+  return found;
+}
+
+function cacheCharacterBones(model){
+  if(model.userData.bonesCached) return model.userData.bones;
+
+  const bones = {
+    hips: findBoneByKeywords(model, ["mixamorigHips", "hips"]),
+    spine: findBoneByKeywords(model, ["mixamorigSpine", "spine"]),
+    spine1: findBoneByKeywords(model, ["mixamorigSpine1", "spine1", "chest"]),
+    spine2: findBoneByKeywords(model, ["mixamorigSpine2", "spine2", "upperchest"]),
+    neck: findBoneByKeywords(model, ["mixamorigNeck", "neck"]),
+    head: findBoneByKeywords(model, ["mixamorigHead", "head"]),
+
+    lShoulder: findBoneByKeywords(model, ["mixamorigLeftShoulder", "leftshoulder"]),
+    rShoulder: findBoneByKeywords(model, ["mixamorigRightShoulder", "rightshoulder"]),
+    lArm: findBoneByKeywords(model, ["mixamorigLeftArm", "leftarm", "upperarm_l"]),
+    rArm: findBoneByKeywords(model, ["mixamorigRightArm", "rightarm", "upperarm_r"]),
+    lFore: findBoneByKeywords(model, ["mixamorigLeftForeArm", "leftforearm", "lowerarm_l"]),
+    rFore: findBoneByKeywords(model, ["mixamorigRightForeArm", "rightforearm", "lowerarm_r"]),
+    lHand: findBoneByKeywords(model, ["mixamorigLeftHand", "lefthand"]),
+    rHand: findBoneByKeywords(model, ["mixamorigRightHand", "righthand"]),
+
+    lUpLeg: findBoneByKeywords(model, ["mixamorigLeftUpLeg", "leftupleg", "thigh_l"]),
+    rUpLeg: findBoneByKeywords(model, ["mixamorigRightUpLeg", "rightupleg", "thigh_r"]),
+    lLeg: findBoneByKeywords(model, ["mixamorigLeftLeg", "leftleg", "calf_l"]),
+    rLeg: findBoneByKeywords(model, ["mixamorigRightLeg", "rightleg", "calf_r"]),
+    lFoot: findBoneByKeywords(model, ["mixamorigLeftFoot", "leftfoot"]),
+    rFoot: findBoneByKeywords(model, ["mixamorigRightFoot", "rightfoot"])
+  };
+
+  model.userData.bones = bones;
+  model.userData.bonesCached = true;
+  return bones;
+}
+
+function setBoneRot(bone, x=0, y=0, z=0){
+  if(!bone) return;
+  bone.rotation.set(x, y, z);
+}
+
+function applyBaseCombatStance(model){
+  if(!model) return;
+  const b = cacheCharacterBones(model);
+
+  // 基本構え:
+  // 画像の左メインポーズを参考に、腰高・前傾・腕は胸前・膝は軽く曲げる。
+  // 左右対称にせず、左足をやや前、右足を支えにする。
+  setBoneRot(b.hips, 0.08, 0.00, -0.04);
+  setBoneRot(b.spine, 0.20, 0.00, 0.02);
+  setBoneRot(b.spine1, 0.22, 0.00, -0.03);
+  setBoneRot(b.spine2, 0.14, 0.00, 0.02);
+  setBoneRot(b.neck, -0.08, 0.00, 0.00);
+  setBoneRot(b.head, -0.06, 0.00, 0.00);
+
+  setBoneRot(b.lShoulder, 0.08, 0.00, -0.10);
+  setBoneRot(b.rShoulder, 0.08, 0.00, 0.10);
+
+  // 腕を胸の前に出す。股間前やTポーズにならないよう、肘を引きすぎない。
+  setBoneRot(b.lArm, 0.72, 0.16, -0.62);
+  setBoneRot(b.rArm, 0.66, -0.14, 0.54);
+  setBoneRot(b.lFore, -0.58, 0.08, 0.14);
+  setBoneRot(b.rFore, -0.52, -0.06, -0.12);
+  setBoneRot(b.lHand, 0.04, 0.00, 0.04);
+  setBoneRot(b.rHand, 0.04, 0.00, -0.04);
+
+  // 高腰のワイドスタンス。膝を曲げるが沈み込ませない。
+  setBoneRot(b.lUpLeg, -0.24, 0.04, 0.20);
+  setBoneRot(b.rUpLeg, -0.16, -0.02, -0.16);
+  setBoneRot(b.lLeg, 0.38, 0.00, 0.00);
+  setBoneRot(b.rLeg, 0.32, 0.00, 0.00);
+  setBoneRot(b.lFoot, -0.10, 0.00, -0.02);
+  setBoneRot(b.rFoot, -0.08, 0.00, 0.02);
+}
+
+
+// ==== GLB_CHARACTER_SYNC START ====
+function updateExternalCharacter(dt){
+  if(!externalCharacter) return;
+  const raw = externalCharacter.children && externalCharacter.children[0];
+  // orientation test: pose disabled until upright confirmed
+
+  externalCharacter.position.copy(player.pos);
+
+  // 足元をプレイヤー接地点へ合わせる
+  externalCharacter.position.y = player.pos.y - 50;
+
+  // 向き補正。逆向きなら + Math.PI を外す
+  externalCharacter.rotation.y = player.yaw + Math.PI;
+
+  if(externalMixer){
+    externalMixer.update(dt);
+  }
+}
+// ==== GLB_CHARACTER_SYNC END ====
+
+
+const input={up:false,down:false,left:false,right:false,reel:false,release:false};let reelWasDown=false;let autoMode=false;const player={pos:new THREE.Vector3(0,60,0),vel:new THREE.Vector3(0,0,0),yaw:0,pitch:0,grounded:false,wires:{left:{hooked:false,point:new THREE.Vector3(),length:0},right:{hooked:false,point:new THREE.Vector3(),length:0}}};let startTime=performance.now(),clearTime=null,cleared=false;
+
+function reset(){player.pos.set(0,80,0);player.vel.set(0,0,0);player.yaw=0;player.pitch=0;player.wires.left.hooked=false;player.wires.right.hooked=false;startTime=performance.now();clearTime=null;cleared=false;document.getElementById('clearText').style.display='none'}function respawn(){player.pos.set(0,360,0);player.vel.set(0,0,0);player.wires.left.hooked=false;player.wires.right.hooked=false}document.getElementById('resetBtn').onclick=reset;document.getElementById('respawnBtn').onclick=respawn;document.getElementById('modeBtn').onclick=()=>{autoMode=!autoMode;document.body.classList.toggle('auto',autoMode);document.getElementById('modeBtn').textContent=autoMode?'AUTO':'MANUAL'};
+function bind(id,key){const el=document.getElementById(id),on=e=>{e.preventDefault();input[key]=true},off=e=>{e.preventDefault();input[key]=false};['pointerdown','touchstart','mousedown'].forEach(ev=>el.addEventListener(ev,on,{passive:false}));['pointerup','pointercancel','touchend','touchcancel','mouseup','mouseleave'].forEach(ev=>el.addEventListener(ev,off,{passive:false}))}['up','down','left','right','reel','release'].forEach(v=>bind(v,v));
+document.addEventListener('keydown',e=>{if(e.key==='ArrowUp')input.up=true;if(e.key==='ArrowDown')input.down=true;if(e.key==='ArrowLeft')input.left=true;if(e.key==='ArrowRight')input.right=true;if(e.key.toLowerCase()==='a')input.reel=true;if(e.key.toLowerCase()==='b')input.release=true});document.addEventListener('keyup',e=>{if(e.key==='ArrowUp')input.up=false;if(e.key==='ArrowDown')input.down=false;if(e.key==='ArrowLeft')input.left=false;if(e.key==='ArrowRight')input.right=false;if(e.key.toLowerCase()==='a')input.reel=false;if(e.key.toLowerCase()==='b')input.release=false});
+function forwardVector(){return new THREE.Vector3(Math.sin(player.yaw)*Math.cos(player.pitch),Math.sin(player.pitch),Math.cos(player.yaw)*Math.cos(player.pitch)).normalize()}
+
+let debugLastShoot = "no shot yet";
+
+function setupDebugBox(){
+  const box = document.getElementById("debugBox");
+  const open = document.getElementById("debugOpen");
+  const close = document.getElementById("debugClose");
+
+  if(close){
+    close.onclick = () => {
+      box.style.display = "none";
+      open.style.display = "block";
+    };
+  }
+
+  if(open){
+    open.onclick = () => {
+      box.style.display = "block";
+      open.style.display = "none";
+    };
+  }
+}
+  
+// ==== WIRE_SHOOT START ====
+function shootWire(side,sx,sy){
+  const ndc=new THREE.Vector2((sx/innerWidth)*2-1,-(sy/innerHeight)*2+1);
+  const raycaster=new THREE.Raycaster();
+  raycaster.setFromCamera(ndc,camera);
+  raycaster.far=8000;
+
+  let hit=null;
+
+  // 建物本体を最優先で判定。窓・装飾・道路などを先に拾う問題を回避する。
+  if(typeof hookTargets!=='undefined' && hookTargets.length>0){
+    const buildingHits=raycaster.intersectObjects(hookTargets,false);
+    hit=buildingHits.find(h=>h.distance>40);
+  }
+
+  // 建物に当たらなかった場合だけ他オブジェクトへフォールバック
+  if(!hit){
+    const objects=[];
+    scene.traverse(o=>{
+      if(
+        o.isMesh &&
+        o!==ground &&
+        o.parent!==playerGroup &&
+        !o.userData?.isPlayerModel
+      ){
+        objects.push(o);
+      }
+    });
+    const hits=raycaster.intersectObjects(objects,true);
+    hit=hits.find(h=>h.distance>70);
+  }
+
+  // 救済として地面も候補
+  if(!hit){
+    const gh=raycaster.intersectObject(ground);
+    hit=gh.find(h=>h.distance>70);
+  }
+
+  if(!hit)return;
+
+  const f=forwardVector();
+  const toHit=hit.point.clone().sub(player.pos).normalize();
+
+  // ほぼ真横・後方だけ除外。上階狙いをしやすくするため緩める。
+  if(f.dot(toHit)<0.01)return;
+
+  const w=player.wires[side];
+  w.hooked=true;
+  w.point.copy(hit.point);
+  const visualOrigin=getWireOrigin(side);
+  const centerToOrigin=visualOrigin.clone().sub(player.pos);
+  const centerEquivalentPoint=hit.point.clone().sub(centerToOrigin);
+
+  // 見た目は腰から射出、物理はキャラ中心で扱う。
+  // そのズレを補正した中心基準の初期ワイヤー長。
+  w.length=player.pos.distanceTo(centerEquivalentPoint)+35;
+}
+// ==== WIRE_SHOOT END ====
+
+document.getElementById('tapLayer').addEventListener('pointerdown',e=>{if(e.target.id!=='tapLayer')return;e.preventDefault();shootWire(e.clientX<innerWidth/2?'left':'right',e.clientX,e.clientY)},{passive:false});
+
+// ==== COLLISION START ====
+function collide(){const radius=28;player.grounded=false;if(player.pos.y<60){player.pos.y=60;if(player.vel.y<0)player.vel.y=0;player.grounded=true}for(const b of solids){if(player.pos.y>b.h+80)continue;const insideX=player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius,insideZ=player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius;if(insideX&&insideZ&&player.pos.y<b.h+70){const left=Math.abs(player.pos.x-(b.x-radius)),right=Math.abs(player.pos.x-(b.x+b.w+radius)),front=Math.abs(player.pos.z-(b.z-radius)),back=Math.abs(player.pos.z-(b.z+b.d+radius)),min=Math.min(left,right,front,back);if(min===left){
+  player.pos.x=b.x-radius;
+  player.vel.x=0;
+  holdNearAnchorOnWall();
+}else if(min===right){
+  player.pos.x=b.x+b.w+radius;
+  player.vel.x=0;
+  holdNearAnchorOnWall();
+}else if(min===front){
+  player.pos.z=b.z-radius;
+  player.vel.z=0;
+  holdNearAnchorOnWall();
+}else{
+  player.pos.z=b.z+b.d+radius;
+  player.vel.z=0;
+  holdNearAnchorOnWall();
+}}if(player.pos.x>b.x-radius&&player.pos.x<b.x+b.w+radius&&player.pos.z>b.z-radius&&player.pos.z<b.z+b.d+radius&&player.pos.y<b.h+60&&player.pos.y>b.h-30&&player.vel.y<=0){player.pos.y=b.h+60;player.vel.y=0;player.grounded=true}}}
+// ==== COLLISION END ====
+
+
+// ==== WIRE_PHYSICS_APPLY START ====
+function applyWire(w,dt){
+  if(!w.hooked)return;
+
+  const toPlayer = player.pos.clone().sub(w.point);
+  const dist = toPlayer.length();
+  if(dist < 1)return;
+
+  const n = toPlayer.clone().normalize();
+  const speed = player.vel.length();
+
+  // A中だけ巻き取り。Aを離してもワイヤー長は維持する。
+  if(input.reel){
+    const reelSpeed = 14 + Math.min(44, dist * 0.025);
+    w.length = Math.max(90, w.length - reelSpeed);
+  }
+
+  // ワイヤー長を超えた時だけ張力発生
+  const stretch = dist - w.length;
+  if(stretch <= 0)return;
+
+  // 張力モデル
+  const STIFFNESS = 0.42;
+  const MAX_TENSION = 54;
+
+  let tension = stretch * STIFFNESS;
+  tension = Math.min(tension, MAX_TENSION);
+
+  // 外向き速度を吸収。完全停止ではなく少し残す。
+  const radial = player.vel.dot(n);
+  if(radial > 0){
+    const absorb = input.reel ? 0.82 : 0.58;
+    player.vel.addScaledVector(n, -radial * absorb);
+  }
+
+  // 張力でアンカー方向へ戻す
+  player.vel.addScaledVector(n, -tension * dt * 60);
+
+  // 伸びすぎた時だけ位置を少し戻して破綻防止
+  if(stretch > 80){
+    player.pos.addScaledVector(n, -Math.min(24, stretch * 0.18));
+  }
+
+  // A中だけ少し強めに吸う
+  if(input.reel){
+    const pull = 6 + Math.min(20, dist * 0.01);
+    player.vel.addScaledVector(n, -pull * dt * 60);
+  }
+
+  // 振り子感を少し残す
+  const tangent = player.vel.clone().addScaledVector(n, -player.vel.dot(n));
+  const tLen = tangent.length();
+  if(tLen > 0.1){
+    const boost = input.reel ? 0.010 : 0.004;
+    player.vel.addScaledVector(
+      tangent.normalize(),
+      Math.min(input.reel ? 0.85 : 0.35, tLen * boost)
+    );
+  }
+}
+// ==== WIRE_PHYSICS_APPLY END ====
+
+
+// ==== CAMERA_UPDATE START ====
+function updateCamera(dt){if(autoMode){const dx=goalX-player.pos.x,dz=goalZ-player.pos.z,targetYaw=Math.atan2(dx,dz);let diff=targetYaw-player.yaw;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;player.yaw+=diff*.05;const dist=Math.hypot(dx,dz),targetPitch=THREE.MathUtils.clamp(Math.atan2(160-player.pos.y,dist)+.05,-.55,.55);player.pitch+=(targetPitch-player.pitch)*.04}else{if(input.left)player.yaw+=1.8*dt;if(input.right)player.yaw-=1.8*dt;if(input.up)player.pitch+=1.2*dt;if(input.down)player.pitch-=1.2*dt;player.pitch=THREE.MathUtils.clamp(player.pitch,-1.2,1.2)}const f=forwardVector(),target=player.pos.clone().add(new THREE.Vector3(0,40,0)),camPos=target.clone().addScaledVector(f,-230).add(new THREE.Vector3(0,80,0));camera.position.lerp(camPos,.22);camera.lookAt(target.clone().addScaledVector(f,180))}
+// ==== CAMERA_UPDATE END ====
+
+function updateAvatar(){
+  playerGroup.position.copy(player.pos);
+  playerGroup.rotation.y=player.yaw+Math.PI;
+// レスリング構えの前傾を全身で表現するため、骨盤起点でキャラ全体を前に倒す
+playerGroup.rotation.x=0.22;
+
+  const hasWire=player.wires.left.hooked||player.wires.right.hooked;
+  const reeling=input.reel&&hasWire;
+  const falling=!player.grounded&&player.vel.y<-1.0;
+  const rising=!player.grounded&&player.vel.y>1.0;
+  const speed=player.vel.length();
+  const time=performance.now()*0.006;
+
+  // Base: wrestling stance.
+  // 高腰、股関節から前傾、膝は深く落としすぎない。
+  const target={
+    spineX:.18,chestX:.24,chestZ:0,pelvisZ:0,headX:-.10,
+    lArmX:.70,rArmX:.70,lArmZ:-.32,rArmZ:.32,
+    lElbowX:-.28,rElbowX:-.28,lWristX:.06,rWristX:.06,
+    lLegX:-.18,rLegX:-.18,lLegZ:.12,rLegZ:-.12,
+    lKneeX:.46,rKneeX:.46,lAnkleX:-.10,rAnkleX:-.10
+  };
+
+  if(player.grounded){
+    // 構え中の小さな重心移動
+    target.chestZ=Math.sin(time)*.018;
+    target.pelvisZ=-Math.sin(time)*.010;
+    target.lArmX+=Math.sin(time)*.035;
+    target.rArmX-=Math.sin(time)*.035;
+  }
+
+  if(reeling){
+    // 巻き取り: レスリング構えからさらに前傾。
+    // 肘は体側へ引き、肩は前方、腰は高く残す。
+    target.spineX=.28;
+    target.chestX=.38;
+    target.headX=-.14;
+    target.lArmX=1.05;
+    target.rArmX=1.05;
+    target.lArmZ=-.34;
+    target.rArmZ=.34;
+    target.lElbowX=-.52;
+    target.rElbowX=-.52;
+    target.lWristX=.10;
+    target.rWristX=.10;
+    target.lLegX=-.22;
+    target.rLegX=-.18;
+    target.lLegZ=.16;
+    target.rLegZ=-.16;
+    target.lKneeX=.54;
+    target.rKneeX=.50;
+    target.lAnkleX=-.14;
+    target.rAnkleX=-.14;
+  }else if(falling){
+    // 落下: 前傾は残しつつ、腕でバランスを取る。
+    target.spineX=.10;
+    target.chestX=.16;
+    target.headX=-.06;
+    target.lArmX=.56;
+    target.rArmX=.56;
+    target.lArmZ=-.68;
+    target.rArmZ=.68;
+    target.lElbowX=-.08;
+    target.rElbowX=-.08;
+    target.lLegX=-.24;
+    target.rLegX=-.26;
+    target.lLegZ=.24;
+    target.rLegZ=-.24;
+    target.lKneeX=.42;
+    target.rKneeX=.38;
+  }else if(rising){
+    // 上昇: 構えから脚をやや伸ばす。肩は高めを維持。
+    target.spineX=.08;
+    target.chestX=.12;
+    target.headX=-.04;
+    target.lArmX=.82;
+    target.rArmX=.82;
+    target.lArmZ=-.30;
+    target.rArmZ=.30;
+    target.lElbowX=-.06;
+    target.rElbowX=-.06;
+    target.lLegX=-.32;
+    target.rLegX=-.24;
+    target.lKneeX=.34;
+    target.rKneeX=.30;
+  }else if(speed>12&&!player.grounded){
+    // 高速滑空: レスリング前傾を空中姿勢に変換。
+    target.spineX=.18;
+    target.chestX=.26;
+    target.lArmX=.44;
+    target.rArmX=.44;
+    target.lArmZ=-.55;
+    target.rArmZ=.55;
+    target.lElbowX=-.06;
+    target.rElbowX=-.06;
+    target.lLegX=-.18;
+    target.rLegX=-.20;
+    target.lKneeX=.28;
+    target.rKneeX=.26;
+  }
+
+  smoothAvatar(target,reeling?.22:.15);
+
+  rig.spine.rotation.x=avatarAnim.spineX;
+  rig.chest.rotation.x=avatarAnim.chestX;
+  rig.chest.rotation.z=avatarAnim.chestZ;
+  rig.pelvis.rotation.z=avatarAnim.pelvisZ;
+  rig.head.rotation.x=avatarAnim.headX;
+
+  rig.lShoulder.rotation.set(avatarAnim.lArmX,0,avatarAnim.lArmZ);
+  rig.rShoulder.rotation.set(avatarAnim.rArmX,0,avatarAnim.rArmZ);
+  rig.lElbow.rotation.x=avatarAnim.lElbowX;
+  rig.rElbow.rotation.x=avatarAnim.rElbowX;
+  rig.lWrist.rotation.x=avatarAnim.lWristX;
+  rig.rWrist.rotation.x=avatarAnim.rWristX;
+
+  rig.lHip.rotation.set(avatarAnim.lLegX,0,avatarAnim.lLegZ);
+  rig.rHip.rotation.set(avatarAnim.rLegX,0,avatarAnim.rLegZ);
+  rig.lKnee.rotation.x=avatarAnim.lKneeX;
+  rig.rKnee.rotation.x=avatarAnim.rKneeX;
+  rig.lAnkle.rotation.x=avatarAnim.lAnkleX;
+  rig.rAnkle.rotation.x=avatarAnim.rAnkleX;
+}
+
+
+// ==== WIRE_ORIGIN_WAIST START ====
+function getWireOrigin(side){
+  // キャラの左右腰からワイヤーを出す。
+  // 画面上でクロスしないよう、左右の符号を修正。
+  const sideSign = side === "left" ? 1 : -1;
+
+  // キャラ基準の右方向ベクトル
+  const right = new THREE.Vector3(
+    Math.cos(player.yaw),
+    0,
+    -Math.sin(player.yaw)
+  ).normalize();
+
+  // キャラ基準の前方向ベクトル
+  const forward = new THREE.Vector3(
+    Math.sin(player.yaw),
+    0,
+    Math.cos(player.yaw)
+  ).normalize();
+
+  const origin = player.pos.clone();
+
+  // 腰の高さ。前回は低すぎたため、膝付近から腰付近へ上げる
+  origin.y -= 5;
+
+  // 左右腰位置
+  origin.addScaledVector(right, sideSign * 15);
+
+  // 身体にめり込まないよう少し前へ
+  origin.addScaledVector(forward, 10);
+
+  return origin;
+}
+// ==== WIRE_ORIGIN_WAIST END ====
+
+
+
+// ==== WIRE_VISUAL_LINES START ====
+function updateWireLines(){
+  function setLine(line,w,side){
+    if(!w.hooked){
+      line.visible=false;
+      return;
+    }
+    line.visible=true;
+
+    const start = getWireOrigin(side);
+    line.geometry.dispose();
+    line.geometry = new THREE.BufferGeometry().setFromPoints([start,w.point]);
+  }
+
+  setLine(leftLine,player.wires.left,"left");
+  setLine(rightLine,player.wires.right,"right");
+}
+// ==== WIRE_VISUAL_LINES END ====
+
+function getRank(sec){if(sec<=18)return'S';if(sec<=30)return'A';if(sec<=45)return'B';if(sec<=60)return'C';return'D'}
+function fmtShort(v){
+  if(!v) return "null";
+  return `${v.x.toFixed(1)},${v.y.toFixed(1)},${v.z.toFixed(1)}`;
+}
+function updateDebugHud(){
+  const hud = document.getElementById("debugHud");
+  const box = document.getElementById("debugContent");
+
+  const held = player.wires.left.hooked || player.wires.right.hooked;
+  const lock = (typeof braceLockActive !== "undefined") ? braceLockActive : "NA";
+
+  const text =
+    "P " + fmtShort(player.pos) + "\n" +
+    "V " + fmtShort(player.vel) + "\n" +
+    "C " + fmtShort(camera.position) + "\n" +
+    "E " + fmtShort(externalCharacter ? externalCharacter.position : null) + "\n" +
+    "W " + (held ? 1 : 0) +
+    " R " + (input.reel ? 1 : 0) +
+    " L " + lock;
+
+  if(hud){
+    hud.innerHTML = "DBG";
+  }
+
+  if(box){
+    box.textContent = text;
+  }
+}
+
+// ==== HUD_UPDATE START ====
+function updateUI(){const elapsed=clearTime??(performance.now()-startTime)/1000;timeText.textContent='T:'+elapsed.toFixed(2);heightText.textContent='H:'+Math.floor(player.pos.y);speedText.textContent='S:'+Math.floor(player.vel.length()*10);wireText.textContent='L:'+(player.wires.left.hooked?'ON':'OFF')+' / R:'+(player.wires.right.hooked?'ON':'OFF');stateText.textContent=(externalReady?'MODEL':'FALLBACK')+' / '+(player.grounded?'GROUND':'AIR')
+updateDebugHud();}
+// ==== HUD_UPDATE END ====
+
+function handleReelTakeoff(){
+  const hasWire=player.wires.left.hooked||player.wires.right.hooked;
+  const reelPressedNow=input.reel&&!reelWasDown;
+
+  if(reelPressedNow&&hasWire){
+    // Aを押した瞬間に踏み切り。
+    // 地上・屋上なら上方向の初速を追加し、摩擦拘束から離脱する。
+    if(player.grounded){
+      player.vel.y=Math.max(player.vel.y,8.5);
+      player.grounded=false;
+    }else{
+      player.vel.y+=1.2;
+    }
+
+    // アンカー方向へ初動を与える。
+    const targets=[];
+    if(player.wires.left.hooked)targets.push(player.wires.left.point);
+    if(player.wires.right.hooked)targets.push(player.wires.right.point);
+
+    if(targets.length){
+      const center=new THREE.Vector3();
+      for(const p of targets)center.add(p);
+      center.multiplyScalar(1/targets.length);
+
+      const toAnchor=center.clone().sub(player.pos);
+      if(toAnchor.length()>1){
+        player.vel.addScaledVector(toAnchor.normalize(),9.5);
+      }
+    }
+  }
+
+  reelWasDown=input.reel;
+}
+
+function checkGoal(){if(cleared)return;const d=Math.hypot(player.pos.x-goalX,player.pos.z-goalZ);if(d<160&&player.pos.y<430){cleared=true;clearTime=(performance.now()-startTime)/1000;rankText.textContent='TIME '+clearTime.toFixed(2)+' / RANK '+getRank(clearTime);clearText.style.display='block'}}
+
+// ==== MAIN_GAME_LOOP START ====
+function animate(){const dt=Math.min(.033,clock.getDelta());if(input.release){player.wires.left.hooked=false;player.wires.right.hooked=false;reelWasDown=input.reel}
+  handleReelTakeoff();// ==== GRAVITY_TUNING START ====
+// 自然な落下感のための重力・落下速度上限
+const GRAVITY = 0.60;          // 大きいほど落下が速い
+const MAX_FALL_SPEED = -46;    // 落下速度の上限
+
+player.vel.y -= GRAVITY * dt * 60;
+
+if(player.vel.y < MAX_FALL_SPEED){
+  player.vel.y = MAX_FALL_SPEED;
+}
+// ==== GRAVITY_TUNING END ====
+                   
+                   applyWire(player.wires.left,dt);applyWire(player.wires.right,dt);const MAX_SPEED=95;
+  if(player.vel.length()>MAX_SPEED){
+    player.vel.setLength(MAX_SPEED);
+  }
+  player.pos.addScaledVector(player.vel,dt*60);collide();
+  if(player.grounded&&!input.reel){
+    // 地上でAを押していない時は踏ん張る
+    player.vel.x*=0.82;
+    player.vel.z*=0.82;
+  }else{
+    // A中・空中では摩擦をほぼゼロにする
+    player.vel.x*=0.997;
+    player.vel.z*=0.997;
+  }
+  player.vel.y*=0.999;updateCamera(dt);updateAvatar();updateExternalCharacter(dt);updateWireLines();checkGoal();updateUI();renderer.render(scene,camera);requestAnimationFrame(animate)}
+// ==== MAIN_GAME_LOOP END ====
+
+function resize(){
+  renderer.setSize(innerWidth,innerHeight,false);
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+}
+
+addEventListener('resize',resize);
+resize();
+setupDebugBox();
+reset();
+
+setTimeout(()=>{ if(loadStatus && !externalReady && !externalLoadFailed) loadStatus.textContent="3Dは起動済み。モデル読込中..."; }, 1200);
+animate();document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});document.addEventListener('contextmenu',e=>e.preventDefault(),{passive:false});
+</script>
 </body>
 </html>
